@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台電送件小幫手</title>
+    <title>台電送件小幫手 (V31 穩定版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,114 +13,188 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        /* V23 Final: Professional Theme */
+        /* V31 Theme: Dark Power Engineering (Fixed Layout) */
         :root {
-            --bg-body: #ebedef;
-            --bg-sidebar: #ffffff;
-            --text-primary: #2c3e50;
-            --text-secondary: #7f8c8d;
-            --color-brand: #2c3e50;
-            --color-accent: #2980b9;
-            --color-danger: #c0392b;
-            --color-success: #27ae60;
-            --color-neutral: #95a5a6;
-            --border-light: #dfe6e9;
+            /* User Defined Palette */
+            --bg-sidebar: #333333;
+            --bg-card: #001219;
+            --text-main: #eceff1;
+            --text-sub: #b0bec5;
+            --accent-orange: #ffb703;
+            --btn-primary: #ffb703;
+            --btn-hover: #ffb703;
+            --input-bg: #ffffff;
+            --input-text: #455a64;
+            --danger: #ef5350;
+            --success: #ffb74d;
+            --radius: 4px;
+            
+            /* Derived Colors */
+            --border-color: #455a64;
         }
 
-        body { margin: 0; padding: 0; display: flex; height: 100vh; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; overflow: hidden; color: var(--text-primary); background: var(--bg-body); }
+        body { 
+            margin: 0; padding: 0; display: flex; height: 100vh; 
+            font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            overflow: hidden; background: #e0e0e0;
+        }
         
+        /* Sidebar Layout - Structural Fix */
         .sidebar { 
-            width: 360px; background: var(--bg-sidebar); padding: 20px; 
-            display: flex; flex-direction: column; overflow-y: auto; z-index: 1000; 
-            box-shadow: 4px 0 15px rgba(0,0,0,0.08); 
-            transition: transform 0.3s ease; position: relative; flex-shrink: 0;
-            border-right: 1px solid var(--border-light);
+            width: 300px; 
+            background: var(--bg-sidebar); 
+            color: var(--text-main);
+            display: flex; flex-direction: column; 
+            z-index: 1000; 
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            transition: transform 0.3s ease; 
+            position: relative; 
+            flex-shrink: 0;
+            height: 100vh;
         }
-        .sidebar.collapsed { transform: translateX(-360px); margin-right: -360px; }
+        .sidebar.collapsed { transform: translateX(-300px); margin-right: -300px; }
         
+        /* Scrollable Content Area */
+        .sidebar-scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .sidebar-scroll-area::-webkit-scrollbar { width: 8px; }
+        .sidebar-scroll-area::-webkit-scrollbar-track { background: var(--bg-sidebar); }
+        .sidebar-scroll-area::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        .sidebar-scroll-area::-webkit-scrollbar-thumb:hover { background: var(--accent-orange); }
+
+        /* Header */
         .sidebar h3 {
-            margin-top: 0; padding-bottom: 15px; border-bottom: 2px solid var(--color-brand);
-            color: var(--color-brand); font-weight: 800; font-size: 18px; letter-spacing: 0.5px;
-            display: flex; align-items: center; gap: 8px;
+            margin-top: 0; margin-bottom: 20px; padding-bottom: 15px;
+            border-bottom: 2px solid var(--accent-orange);
+            color: var(--accent-orange); 
+            font-weight: 700; font-size: 18px; letter-spacing: 1px;
+            display: flex; align-items: center; gap: 10px;
+            text-transform: uppercase;
         }
 
+        /* Toggle Button - Fixed */
         .toggle-btn {
             position: absolute; top: 15px; right: -40px;
-            width: 40px; height: 40px; background: var(--color-brand); color: white;
+            width: 40px; height: 40px; 
+            background: var(--bg-sidebar); color: var(--accent-orange);
             border: none; border-radius: 0 4px 4px 0; cursor: pointer;
             font-size: 20px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 2000;
+            box-shadow: 4px 2px 8px rgba(0,0,0,0.3); z-index: 2000;
         }
+        .toggle-btn:hover { background: var(--bg-card); color: #fff; }
 
+        /* Card / Section Styling */
         .section { 
-            margin-bottom: 18px; border: 1px solid var(--border-light); 
-            padding: 15px; background: #fdfdfd; border-radius: 6px; 
-            border-left: 4px solid var(--color-brand);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            margin-bottom: 16px; 
+            padding: 15px; 
+            background: var(--bg-card); 
+            border-radius: var(--radius);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-left: 4px solid var(--accent-orange); 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
         
-        label { display: block; font-weight: 700; margin-bottom: 8px; font-size: 13px; color: var(--text-primary); }
-        
+        label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 13px; color: var(--text-main); }
+        .sub-text { font-size: 11px; color: var(--text-sub); margin-bottom: 6px; display: block; }
+
+        /* Inputs */
+        input[type="text"], input[type="number"], select {
+            width: 100%; padding: 8px; font-size: 13px; 
+            border: 1px solid var(--border-color); border-radius: var(--radius); 
+            background: var(--input-bg); color: var(--input-text);
+            box-sizing: border-box;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 183, 3, 0.4); }
+        input[type="file"] { font-size: 12px; color: var(--text-sub); }
+
+        /* Buttons */
         button { 
-            width: 100%; padding: 9px; margin-top: 8px; cursor: pointer; 
-            border: 1px solid transparent; border-radius: 4px; 
-            color: white; font-weight: 600; font-size: 13px; transition: all 0.2s;
-            background: var(--color-neutral);
+            width: 100%; padding: 9px 12px; margin-top: 10px; cursor: pointer; 
+            border: none; border-radius: var(--radius); 
+            font-weight: 700; font-size: 12px; letter-spacing: 0.5px;
+            transition: all 0.2s; color: #000; 
+            background: var(--btn-primary);
         }
-        button:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        button:hover { background: var(--btn-hover); color: white; transform: translateY(-1px); }
         button:active { transform: translateY(0); }
 
-        button.primary { background: var(--color-brand); }
-        button.action  { background: var(--color-accent); }
-        button.success { background: var(--color-success); }
-        button.danger  { background: var(--color-danger); }
-        button.outline { background: transparent; border: 1px solid var(--text-secondary); color: var(--text-secondary); }
-        button.outline:hover { background: #f1f1f1; color: var(--text-primary); }
-
-        .filter-controls { display: flex; gap: 5px; margin-top: 10px; align-items: center; }
-        .filter-controls select { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; color: var(--text-primary); }
-        .filter-controls button { margin-top: 0; width: auto; font-size: 12px; padding: 6px 10px; }
-
-        #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #e0e0e0; }
+        /* Button Variants */
+        button.primary { background: var(--accent-orange); color: #263238; } 
+        button.action  { background: var(--btn-primary); color: #001219; }
+        button.success { background: var(--success); color: #001219; }
         
-        .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #333; border-radius: 50%; cursor: nwse-resize; box-shadow: 0 0 4px rgba(0,0,0,0.3); }
-        .move-handle-icon { background: var(--color-brand); border: 2px solid white; border-radius: 4px; color: white; text-align: center; font-size: 16px; line-height: 18px; cursor: move; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .drag-point-icon { background: var(--color-accent); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.4); cursor: move; }
+        button.danger  { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+        button.danger:hover { background: var(--danger); color: white; }
+        
+        button.outline { 
+            background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub); font-weight: normal;
+        }
+        button.outline:hover { border-color: var(--text-main); color: var(--text-main); background: rgba(255,255,255,0.05); }
 
-        .status-msg { font-size: 12px; color: var(--text-secondary); margin-top: 6px; font-weight: 600; line-height: 1.4; padding: 4px 0; border-top: 1px dashed var(--border-light); }
+        /* Debug Button */
+        .debug-footer {
+            margin-top: 20px;
+            padding-top: 20px;
+            text-align: center;
+            border-top: 1px dashed var(--border-color);
+        }
+        button.debug { 
+            background: transparent; color: var(--text-sub); 
+            font-size: 11px; text-decoration: underline; margin: 0; padding: 5px; width: auto; font-weight: normal;
+        }
+        button.debug:hover { color: var(--accent-orange); background: transparent; }
+
+        /* Layout Helpers */
+        .row { display: flex; gap: 8px; align-items: center; }
+        .row > * { flex: 1; }
         
-        .scale-inputs { display: flex; gap: 10px; margin-top: 5px; }
-        .scale-inputs div { flex: 1; }
-        .scale-inputs input { width: 100%; padding: 6px; font-size: 12px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
-        
+        .filter-controls { display: flex; gap: 6px; margin-top: 10px; }
+        .filter-controls select { flex: 2; }
+        .filter-controls button { flex: 1; margin-top: 0; padding: 8px; }
+
         .draw-tools { display: flex; gap: 5px; flex-wrap: wrap; }
-        .draw-tools button { flex: 1; min-width: 50px; font-size: 12px; background: #ecf0f1; color: var(--text-primary); border: 1px solid #bdc3c7; }
-        .draw-tools button.active { background: var(--color-brand); color: white; border-color: var(--color-brand); }
+        .draw-tools button { flex: 1; margin-top: 0; background: #263238; color: var(--text-main); border: 1px solid #455a64; color: #eceff1; }
+        .draw-tools button.active { background: var(--accent-orange); color: #001219; border-color: var(--accent-orange); }
         
-        .tool-options { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #eee; }
+        .tool-options { 
+            display: flex; align-items: center; gap: 10px; margin-top: 8px; 
+            background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); 
+        }
+
+        .status-msg { font-size: 11px; color: var(--success); margin-top: 6px; font-weight: bold; text-align: right; }
+
+        /* Map */
+        #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #cfd8dc; }
         
+        .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #000; border-radius: 0; cursor: nwse-resize; }
+        .move-handle-icon { background: var(--accent-orange); border: 2px solid #fff; border-radius: 4px; color: #000; text-align: center; font-size: 16px; line-height: 18px; cursor: move; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        .drag-point-icon { background: var(--btn-hover); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.4); cursor: move; }
+
+        /* Edit Panel */
         #edit-panel {
-            position: absolute; top: 80px; left: 420px; width: 280px;
-            background: #ffffff; border: 1px solid #ccc; border-radius: 6px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            position: absolute; top: 80px; left: 340px; width: 280px;
+            background: var(--bg-sidebar); border: 2px solid var(--accent-orange);
+            box-shadow: 4px 4px 10px rgba(0,0,0,0.5);
             z-index: 2000; display: none; overflow: hidden;
+            border-radius: var(--radius); color: var(--text-main);
         }
         .panel-header {
-            background: var(--color-brand); color: white; padding: 12px 15px;
+            background: var(--bg-card); color: var(--accent-orange); padding: 12px 15px;
             font-size: 14px; font-weight: bold; cursor: move;
             display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid #455a64;
         }
-        .panel-body { padding: 15px; background: #fff; }
-        .panel-body input, .panel-body select { 
-            width: 100%; margin-bottom: 12px; padding: 8px; box-sizing: border-box; 
-            border: 1px solid #ccc; border-radius: 4px; font-family: monospace; font-size: 13px;
-        }
-        .radius-control { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: #f8f9fa; padding: 8px; border-radius: 4px; border: 1px solid #eee; }
-        .radius-control input[type="range"] { flex: 1; margin: 0; cursor: pointer; }
-        .radius-control input[type="number"] { width: 50px; margin: 0; text-align: center; border: 1px solid #ccc; }
-
-        .panel-buttons { display: flex; gap: 10px; margin-top: 5px; padding-top: 10px; border-top: 1px solid #f1f1f1; }
-        .close-panel-btn { background: transparent; border: none; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 20px; padding: 0; line-height: 1; }
+        .panel-body { padding: 15px; }
+        .panel-body input { background: #fff; color: #000; } 
+        
+        .radius-control { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); }
+        
+        .panel-buttons { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .close-panel-btn { background: transparent; border: none; color: var(--text-sub); cursor: pointer; font-size: 18px; width: auto; margin:0; padding:0; }
         .close-panel-btn:hover { color: white; }
     </style>
 </head>
@@ -128,103 +202,105 @@
 
 <div class="sidebar" id="sidebar">
     <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
-    <h3>⚡ 台電送件小幫手</h3>
-
-    <div class="section">
-        <label>1. 底圖設定(台帳圖資PDF)</label>
-        <input type="file" id="pdf-input" accept="application/pdf" style="width:100%">
-        <div id="auto-detect-msg" class="status-msg"></div>
-        <div style="margin-top:10px; display:flex; gap:10px;">
-            <div style="flex:1;">
-                <label style="font-size:11px; margin:0; color:var(--text-secondary);">白邊修正 (寬)</label>
-                <input type="number" id="scale-x" value="1.24" step="0.01" onchange="recalcBounds()" style="width:100%; padding:5px; border:1px solid #ccc; border-radius:3px;">
-            </div>
-            <div style="flex:1;">
-                <label style="font-size:11px; margin:0; color:var(--text-secondary);">白邊修正 (高)</label>
-                <input type="number" id="scale-y" value="1.42" step="0.01" onchange="recalcBounds()" style="width:100%; padding:5px; border:1px solid #ccc; border-radius:3px;">
-            </div>
-        </div>
-        <label style="margin-top:12px; font-size:12px;">透明度:</label>
-        <input type="range" id="opacity-slider" min="0" max="1" step="0.1" value="0.6" style="width:100%; margin:0;">
-        
-        <div style="display:flex; align-items:center; margin-top:10px; font-size:12px;">
-            <input type="checkbox" id="aspect-ratio-check" checked style="margin-right:5px;">
-            <label for="aspect-ratio-check" style="margin:0; cursor:pointer; font-weight:normal;">鎖定長寬比</label>
-        </div>
-        
-        <div style="display:flex; gap:5px; margin-top:5px;">
-            <button id="btn-lock" class="outline" onclick="toggleLock()" disabled>🔒 鎖定位置</button>
-            <button class="outline" onclick="showBoundsInfo()">📋 邊界</button>
-        </div>
-    </div>
-
-    <div class="section">
-        <label>2. 參考 G-Code (綠點)</label>
-        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">* 欄位: G-code, G-x, G-y, G-W</div>
-        <input type="file" id="ref-csv-input" accept=".csv" style="width:100%">
-        <div style="margin-top:10px; display:flex; gap:5px; align-items:center;">
-            <select id="csv-encoding" style="font-size:12px; padding:4px; border:1px solid #ccc; border-radius:3px;"><option value="UTF-8">UTF-8</option><option value="Big5">Big5</option></select>
-            <div style="flex:1;"></div>
-            <button onclick="clearRefMarkers()" style="width:auto; margin:0; padding:5px 10px; font-size:11px; background:var(--color-neutral);">清除</button>
-        </div>
-        <div id="ref-status" style="font-size:12px; color:var(--color-success); margin-top:5px; font-weight:bold;"></div>
-    </div>
     
-    <div class="section">
-        <label>3. 路燈資料匯入 (OUTPUT.csv)</label>
-        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:8px;">* 欄位: name, x, y, G-code_1st</div>
-        <input type="file" id="sl-csv-input" accept=".csv" style="width:100%">
-        
-        <div style="margin-top:8px; display:flex; gap:5px; align-items:center;">
-            <select id="sl-encoding" style="font-size:12px; padding:4px; border:1px solid #ccc; border-radius:3px;"><option value="UTF-8">UTF-8</option><option value="Big5">Big5</option></select>
-            <div style="flex:1;"></div>
-            <button onclick="clearStreetLights()" style="width:auto; margin:0; padding:5px 10px; font-size:11px; background:var(--color-neutral);">清除</button>
-        </div>
-        
-        <label style="margin-top:12px; margin-bottom:4px; font-size:12px;">篩選與操作:</label>
-        <div class="filter-controls">
-            <select id="sl-filter" onchange="updateFilter()">
-                <option value="all">👁️ 顯示全部</option>
-                <option value="器變">🔧 器變</option>
-                <option value="容變">💡 容變 (LED)</option>
-                <option value="增設">➕ 增設</option>
-                <option value="待確認">❓ 待確認 (無G-code)</option>
-            </select>
-            <button class="success" onclick="addManualStreetLight()">➕ 手動新增</button>
-        </div>
-        <div id="sl-status" style="font-size:12px; color:var(--color-accent); margin-top:5px; font-weight:bold;"></div>
-        
-        <button class="action" onclick="exportRegistrationSheet()" style="margin-top:10px;">📊 匯出篩選後登記單</button>
-    </div>
+    <div class="sidebar-scroll-area">
+        <h3>⚡ 台電送件小幫手</h3>
 
-    <div class="section">
-        <label>4. 手動繪圖 (Draw)</label>
-        <div class="draw-tools">
-            <button onclick="setDrawMode('circle')" id="btn-draw-circle">⭕ 圓</button>
-            <button onclick="setDrawMode('line')" id="btn-draw-line">➖ 線</button>
-            <button onclick="setDrawMode('text')" id="btn-draw-text">Aa 字</button>
-            <button onclick="setDrawMode(null)" id="btn-draw-cancel" style="background:#e0e0e0; color:#555;">✋ 停止</button>
-        </div>
-        <div class="tool-options">
-            <div style="display:flex; align-items:center; gap:5px;">
-                <span style="color:#666">顏色:</span>
-                <input type="color" id="input-color" value="#e74c3c" style="width:25px; height:25px; border:none; cursor:pointer; padding:0;">
+        <div class="section">
+            <label>1. 底圖設定(台帳圖資PDF)</label>
+            <input type="file" id="pdf-input" accept="application/pdf">
+            <div id="auto-detect-msg" class="status-msg" style="color:var(--text-sub)"></div>
+            
+            <label style="margin-top:12px; font-size:12px;">透明度:</label>
+            <input type="range" id="opacity-slider" min="0" max="1" step="0.1" value="0.6" style="width:100%; margin:0;">
+            
+            <div style="display:flex; align-items:center; margin-top:10px; font-size:12px; color:var(--text-sub);">
+                <input type="checkbox" id="aspect-ratio-check" checked style="width:auto; margin-right:5px;">
+                <label for="aspect-ratio-check" style="margin:0; cursor:pointer; font-weight:normal; color:var(--text-main);">鎖定長寬比</label>
             </div>
-            <div style="display:flex; align-items:center; gap:5px;">
-                <span style="color:#666">字級:</span>
-                <input type="number" id="input-font-size" value="16" min="8" max="72" style="width:40px; padding:2px; text-align:center; border:1px solid #ccc;">
+            
+            <div class="row">
+                <button id="btn-lock" class="outline" onclick="toggleLock()" disabled>🔒 鎖定位置</button>
+                <button class="outline" onclick="showBoundsInfo()">📋 邊界</button>
             </div>
         </div>
-        <button onclick="clearDrawings()" class="danger" style="margin-top:10px;">🗑️ 清除所有手繪</button>
-    </div>
 
-    <div class="section" style="border-left:none; background:transparent; padding:0; box-shadow:none;">
-        <button class="primary" onclick="exportPDF()" style="font-size:15px; padding:12px; margin-bottom:10px;">💾 匯出圖層 PDF (含篩選)</button>
-        <div style="display:flex; gap:8px;">
-            <button class="outline" onclick="saveProject()" style="background:#fff;">📂 儲存專案</button>
-            <button class="outline" onclick="loadProjectClick()" style="background:#fff;">📂 載入專案</button>
+        <div class="section">
+            <label>2. 參考 G-Code (綠點)</label>
+            <span class="sub-text">* 欄位: G-code, G-x, G-y, G-W</span>
+            <input type="file" id="ref-csv-input" accept=".csv">
+            <div class="filter-controls">
+                <select id="csv-encoding">
+                    <option value="UTF-8">UTF-8</option>
+                    <option value="Big5">Big5</option>
+                </select>
+                <button onclick="clearRefMarkers()" class="danger" style="margin:0;">清除</button>
+            </div>
+            <div id="ref-status" class="status-msg" style="color:var(--success);"></div>
         </div>
-        <input type="file" id="project-input" accept=".json" style="display: none;">
+        
+        <div class="section">
+            <label>3. 路燈資料匯入 (OUTPUT.csv)</label>
+            <span class="sub-text">* 欄位: name, x, y, G-code_1st</span>
+            <input type="file" id="sl-csv-input" accept=".csv">
+            
+            <div class="filter-controls">
+                <select id="sl-encoding">
+                    <option value="UTF-8">UTF-8</option>
+                    <option value="Big5">Big5</option>
+                </select>
+                <button onclick="clearStreetLights()" class="danger" style="margin:0;">清除</button>
+            </div>
+            
+            <label style="margin-top:12px; margin-bottom:4px;">篩選與操作:</label>
+            <div class="filter-controls">
+                <select id="sl-filter" onchange="updateFilter()">
+                    <option value="all">👁️ 顯示全部</option>
+                    <option value="器變">🔧 器變</option>
+                    <option value="容變">💡 容變 (LED)</option>
+                    <option value="增設">➕ 增設</option>
+                    <option value="待確認">❓ 待確認 (無G-code)</option>
+                </select>
+                <button class="success" onclick="addManualStreetLight()" style="margin:0;">➕ 新增</button>
+            </div>
+            <div id="sl-status" class="status-msg"></div>
+            
+            <button class="action" onclick="exportRegistrationSheet()">📊 匯出篩選後登記單</button>
+        </div>
+
+        <div class="section">
+            <label>4. 手動繪圖 (Draw)</label>
+            <div class="draw-tools">
+                <button onclick="setDrawMode('circle')" id="btn-draw-circle">⭕ 圓</button>
+                <button onclick="setDrawMode('line')" id="btn-draw-line">➖ 線</button>
+                <button onclick="setDrawMode('text')" id="btn-draw-text">Aa 字</button>
+                <button onclick="setDrawMode(null)" id="btn-draw-cancel" style="background:#455a64; color:#fff;">✋ 停止</button>
+            </div>
+            <div class="tool-options">
+                <div style="display:flex; align-items:center; gap:5px; flex:1;">
+                    <span style="color:var(--text-sub); font-size:11px;">顏色:</span>
+                    <input type="color" id="input-color" value="#e74c3c" style="width:25px; height:25px; border:none; cursor:pointer; padding:0; background:none;">
+                </div>
+                <div style="display:flex; align-items:center; gap:5px; flex:1;">
+                    <span style="color:var(--text-sub); font-size:11px;">字級:</span>
+                    <input type="number" id="input-font-size" value="16" min="8" max="72" style="width:40px; padding:2px; text-align:center;">
+                </div>
+            </div>
+            <button onclick="clearDrawings()" class="outline" style="border-color:var(--danger); color:var(--danger);">🗑️ 清除所有手繪</button>
+        </div>
+
+        <div class="section" style="border:none; box-shadow:none; padding:0; background:transparent;">
+            <button class="primary" onclick="exportPDF()" style="padding:12px; font-size:14px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">💾 匯出圖層 PDF (含篩選)</button>
+            <div class="row">
+                <button class="outline" onclick="saveProject()">📂 儲存專案</button>
+                <button class="outline" onclick="loadProjectClick()">📂 載入專案</button>
+            </div>
+            <input type="file" id="project-input" accept=".json" style="display: none;">
+        </div>
+
+        <div class="debug-footer">
+            <button class="debug" onclick="downloadDebugLog()">📥 下載除錯紀錄 (報錯時請點我)</button>
+        </div>
     </div>
 </div>
 
@@ -236,8 +312,8 @@
         <button class="close-panel-btn" onclick="closeEditPanel()">×</button>
     </div>
     <div class="panel-body">
-        <div style="margin-bottom:10px; padding:5px; background:#f0f8ff; border:1px solid #b6d4fe; border-radius:4px; font-size:12px;">
-            當前類別: <b id="edit-type-display" style="color:var(--color-accent)">--</b>
+        <div style="margin-bottom:10px; padding:5px; background:rgba(255,183,3,0.1); border:1px solid var(--accent-orange); border-radius:var(--radius); font-size:12px;">
+            當前類別: <b id="edit-type-display" style="color:var(--accent-orange)">--</b>
         </div>
 
         <label>G-code (座標):</label>
@@ -251,13 +327,13 @@
 
         <label>紅圈半徑 (公尺):</label>
         <div class="radius-control">
-            <input type="range" id="edit-radius-slider" min="1" max="20" step="0.5" value="7">
-            <input type="number" id="edit-radius-input" value="7" min="1" max="20" step="0.5">
+            <input type="range" id="edit-radius-slider" min="1" max="20" step="0.5" value="7" style="flex:1;">
+            <input type="number" id="edit-radius-input" value="7" min="1" max="20" step="0.5" style="width:50px; text-align:center;">
         </div>
 
         <div class="panel-buttons">
-            <button id="btn-panel-save" class="action">確認更新</button>
-            <button id="btn-panel-reset" class="outline" style="color:var(--text-primary); border-color:#ccc;">恢復位置</button>
+            <button id="btn-panel-save" class="primary" style="margin:0;">確認更新</button>
+            <button id="btn-panel-reset" class="outline" style="margin:0;">恢復位置</button>
         </div>
     </div>
 </div>
@@ -276,7 +352,34 @@
 </datalist>
 
 <script>
+    // --- DEBUG LOGGER SYSTEM ---
+    window.appLogs = [];
+    function log(msg) { 
+        const t = new Date().toISOString();
+        const logMsg = `[${t}] INFO: ${msg}`;
+        window.appLogs.push(logMsg);
+        console.log(logMsg);
+    }
+    function err(msg, e) {
+        const t = new Date().toISOString();
+        const errMsg = `[${t}] ERROR: ${msg} \nSTACK: ${e ? e.stack : 'N/A'}`;
+        window.appLogs.push(errMsg);
+        console.error(msg, e);
+    }
+    window.downloadDebugLog = function() {
+        if(window.appLogs.length === 0) { alert("目前沒有紀錄"); return; }
+        const blob = new Blob([window.appLogs.join('\n')], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = "debug_log.txt";
+        link.click();
+    };
+    window.onerror = function(message, source, lineno, colno, error) {
+        err(`Global Error: ${message} at ${lineno}:${colno}`, error);
+    };
+
     // --- Init ---
+    log("App Initializing...");
     proj4.defs("EPSG:3828", "+proj=tmerc +lat_0=0 +lon_0=121 +x_0=250000 +y_0=0 +k=0.9999 +ellps=aust_SA +towgs84=-752,-358,-179,-.0000011698,.0000018398,.0000009822,.00002329 +units=m +no_defs");
     proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs");
     const taiGridMap = {'A': [170000, 2750000], 'B': [250000, 2750000], 'C': [330000, 2750000], 'D': [170000, 2700000], 'E': [250000, 2700000], 'F': [330000, 2700000], 'G': [170000, 2650000], 'H': [250000, 2650000], 'J': [90000, 2600000], 'K': [170000, 2600000], 'L': [250000, 2600000], 'M': [90000, 2550000], 'N': [170000, 2550000], 'O': [250000, 2550000], 'P': [90000, 2500000], 'Q': [170000, 2500000], 'R': [250000, 2500000], 'T': [170000, 2450000], 'U': [250000, 2450000], 'V': [170000, 2400000], 'W': [250000, 2400000], 'X': [275000, 2614000], 'Y': [275000, 2564000]};
@@ -294,7 +397,6 @@
     let drawnItemsLayer = L.layerGroup().addTo(map);
     let streetLightsLayer = L.layerGroup().addTo(map);
     let streetLightsData = []; 
-    // V23: Removed legacy markersData
     let refDataMap = {}; 
     let refMarkersData = []; 
     let currentBaseBounds = null;
@@ -307,10 +409,11 @@
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    function toggleSidebar() {
+    // Explicitly define global functions to prevent ReferenceErrors from HTML buttons
+    window.toggleSidebar = function() {
         document.getElementById('sidebar').classList.toggle('collapsed');
         setTimeout(() => { map.invalidateSize(); }, 300);
-    }
+    };
 
     function getTimestampedName(baseName, ext) {
         const now = new Date();
@@ -325,6 +428,7 @@
 
     // --- PDF Logic ---
     document.getElementById('pdf-input').addEventListener('change', async function(e) {
+        log("PDF input changed");
         const file = e.target.files[0];
         if (!file) return;
         currentPdfName = file.name.replace(/\.[^/.]+$/, "");
@@ -344,7 +448,7 @@
             } else {
                 msgDiv.innerHTML = `✅ ${file.name.substring(0,5)} (自動白邊)`;
                 currentBaseBounds = gridInfo.bounds;
-                initialBounds = applyScale(gridInfo.bounds);
+                initialBounds = gridInfo.bounds; // Removed scaling
             }
         } else {
             msgDiv.innerText = `⚠️ 未偵測到圖號`;
@@ -376,6 +480,7 @@
         createControlHandles(initialBounds);
         document.getElementById('btn-lock').disabled = false;
         map.fitBounds(initialBounds);
+        log("PDF Loaded successfully");
     });
 
     function getGridBounds(filename) {
@@ -393,30 +498,19 @@
         return { type: 'grid', bounds: [[p2[1], p1[0]], [p1[1], p2[0]]] };
     }
 
-    function applyScale(gridBounds) {
-        const scaleX = parseFloat(document.getElementById('scale-x').value) || 1.0;
-        const scaleY = parseFloat(document.getElementById('scale-y').value) || 1.0;
-        const N = gridBounds[0][0], W = gridBounds[0][1];
-        const S = gridBounds[1][0], E = gridBounds[1][1];
-        const cLat = (N + S) / 2, cLng = (W + E) / 2;
-        const h = N - S, w = E - W;
-        return [[cLat + (h*scaleY)/2, cLng - (w*scaleX)/2], [cLat - (h*scaleY)/2, cLng + (w*scaleX)/2]];
-    }
-
-    window.recalcBounds = function() {
-        if (!currentBaseBounds || !pdfOverlay) return;
-        const newBounds = applyScale(currentBaseBounds);
-        pdfOverlay.setBounds(newBounds);
-        clearControlHandles();
-        createControlHandles(newBounds);
-    };
+    // Removed applyScale and recalcBounds as requested
 
     function clearControlHandles() {
         if (boundsHandleNW) map.removeLayer(boundsHandleNW);
         if (boundsHandleSE) map.removeLayer(boundsHandleSE);
         if (boundsHandleCenter) map.removeLayer(boundsHandleCenter);
     }
+    
     function createControlHandles(bounds) {
+        if (!Array.isArray(bounds) && bounds.getNorthWest) {
+            bounds = [bounds.getNorthWest(), bounds.getSouthEast()];
+        }
+        
         const icon = L.divIcon({ className: 'handle-icon', iconSize: [12, 12] });
         const centerIcon = L.divIcon({ className: 'move-handle-icon', html: '+', iconSize: [20, 20], iconAnchor: [10, 10] });
         boundsHandleNW = L.marker(bounds[0], { draggable: true, icon: icon }).addTo(map);
@@ -454,23 +548,26 @@
         boundsHandleSE.on('drag', handleResize);
         boundsHandleCenter.on('drag', handleMove);
     }
-    function toggleLock() {
+    
+    window.toggleLock = function() {
         if (!pdfOverlay) return;
         isLocked = !isLocked;
         const btn = document.getElementById('btn-lock');
         if (isLocked) {
             clearControlHandles();
             pdfOverlay.getElement().style.pointerEvents = 'none';
-            btn.innerText = '🔒 已鎖定'; btn.className = 'success';
+            btn.innerText = '🔒 位置已鎖定'; btn.className = 'success';
         } else {
             const b = pdfOverlay.getBounds();
             createControlHandles([b.getNorthWest(), b.getSouthEast()]);
             pdfOverlay.getElement().style.pointerEvents = 'auto';
-            btn.innerText = '🔓 鎖定 / 解鎖'; btn.className = 'warning';
+            btn.innerText = '🔓 解鎖位置'; btn.className = 'outline';
         }
-    }
+    };
+    
     document.getElementById('opacity-slider').addEventListener('input', e => { if(pdfOverlay) pdfOverlay.setOpacity(e.target.value); });
-    function showBoundsInfo() { if(pdfOverlay) alert(pdfOverlay.getBounds().toBBoxString()); }
+    
+    window.showBoundsInfo = function() { if(pdfOverlay) alert(pdfOverlay.getBounds().toBBoxString()); };
 
     // --- Street Lights Logic ---
     document.getElementById('sl-csv-input').addEventListener('change', function(e) {
@@ -516,11 +613,9 @@
     }
 
     function createStreetLight(data) {
+        if(!data) { err("createStreetLight called with null data", new Error("Null Data")); return null; }
         if(!data.radius) data.radius = 7;
-        
-        if(!data.processType) {
-            data.processType = getProcessType(data.g_code);
-        }
+        if(!data.processType) data.processType = getProcessType(data.g_code);
 
         const marker = L.marker([data.lat, data.lng], {
             icon: L.divIcon({className:'drag-point-icon', iconSize:[12,12], bgPos:[0,0]}), 
@@ -559,9 +654,11 @@
             L.DomEvent.stopPropagation(e);
             openEditPanel(slObj);
         });
+
+        return slObj;
     }
 
-    // V23: Manual Add with Name Prompt
+    // Explicitly Global Functions
     window.addManualStreetLight = function() {
         const name = prompt("請輸入路燈名稱/編號:", "新路燈");
         if(name === null) return; 
@@ -776,7 +873,8 @@
             map.dragging.disable(); map.getContainer().style.cursor = 'crosshair';
         } else { map.getContainer().style.cursor = ''; }
     };
-    window.clearDrawings = function() { if(confirm("確定清除?")) drawnItemsLayer.clearLayers(); };
+    
+    window.clearDrawings = function(silent=false) { if(silent || confirm("確定清除?")) drawnItemsLayer.clearLayers(); };
 
     function createEditableCircle(latlng, radius, color) {
         const group = L.layerGroup().addTo(drawnItemsLayer);
@@ -785,7 +883,7 @@
         const handle = L.marker(latlng, {icon:L.divIcon({className:'drag-point-icon', iconSize:[12,12]}), draggable:true}).addTo(group);
         handle.on('drag', evt => { circle.setLatLng(evt.latlng); });
         const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn">刪除此圓</button>';
+        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除此圓</button>';
         popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(group); };
         handle.bindPopup(popupContent);
         return { group, circle, handle };
@@ -799,7 +897,7 @@
         const updateLine = () => { line.setLatLngs([h1.getLatLng(), h2.getLatLng()]); };
         h1.on('drag', updateLine); h2.on('drag', updateLine);
         const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn">刪除此線</button>';
+        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除此線</button>';
         popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(group); };
         line.bindPopup(popupContent);
         return { group, line };
@@ -811,7 +909,7 @@
         }).addTo(drawnItemsLayer);
         marker.drawType = 'text'; marker.textContent = text; marker.fontSize = fontSize; marker.color = color;
         const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn">刪除文字</button>';
+        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除文字</button>';
         popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(marker); };
         marker.bindPopup(popupContent);
         return marker;
@@ -890,13 +988,13 @@
                         sl.layers.marker.setTooltipContent(`<b>${sl.data.name}</b><br>${sl.data.g_code}<br><small>[${sl.data.processType}]</small>`);
                     }
                 });
-                updateFilter();
+                window.updateFilter();
             }
         });
     });
-    function clearRefMarkers() { refMarkersLayer.clearLayers(); refDataMap = {}; refMarkersData = []; }
+    window.clearRefMarkers = function() { refMarkersLayer.clearLayers(); refDataMap = {}; refMarkersData = []; };
     
-    async function exportPDF() {
+    window.exportPDF = async function() {
         if (!pdfDocBytes || !pdfOverlay) return alert("請先上傳 PDF");
         try {
             const { PDFDocument, rgb } = PDFLib;
@@ -999,10 +1097,13 @@
             link.href = URL.createObjectURL(blob);
             link.download = fname;
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
-        } catch (err) { console.error(err); alert("匯出錯誤：" + err.message); }
-    }
+        } catch (ex) { 
+            err("Export Error: " + ex.message, ex);
+            alert("匯出錯誤：" + ex.message); 
+        }
+    };
 
-    function saveProject() {
+    window.saveProject = function() {
         if(!pdfOverlay) return;
         const b = pdfOverlay.getBounds();
         const drawings = [];
@@ -1041,16 +1142,20 @@
         link.href = URL.createObjectURL(blob);
         link.download = fname;
         document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    }
+    };
 
-    function loadProjectClick() { document.getElementById('project-input').click(); }
+    window.loadProjectClick = function() { document.getElementById('project-input').click(); };
+    
     document.getElementById('project-input').addEventListener('change', e => {
+        log("Project file input changed");
         const file = e.target.files[0];
         if(!file) return;
         const reader = new FileReader();
         reader.onload = evt => {
+            log("Project file loaded, parsing JSON...");
             try {
                 const d = JSON.parse(evt.target.result);
+                log("JSON Parsed Successfully.");
                 
                 // Clear existing
                 clearStreetLights(true); 
@@ -1059,85 +1164,140 @@
                 drawnItemsLayer.clearLayers(); 
 
                 // Restore Bounds
+                // FIX V24: Enhanced Safety Check for Bounds
                 if(d.bounds && pdfOverlay) {
-                    const b = [[d.bounds.north, d.bounds.west], [d.bounds.south, d.bounds.east]];
-                    pdfOverlay.setBounds(b);
-                    map.fitBounds(b);
-                    if(!isLocked) { clearControlHandles(); createControlHandles(pdfOverlay.getBounds()); }
+                    if (typeof d.bounds.north !== 'number' || typeof d.bounds.south !== 'number' ||
+                        typeof d.bounds.east !== 'number' || typeof d.bounds.west !== 'number') {
+                        log("⚠️ Bounds data is corrupted (NaN or undefined). Skipping bounds restoration.");
+                    } else {
+                        log("Restoring Bounds...");
+                        const b = [[d.bounds.north, d.bounds.west], [d.bounds.south, d.bounds.east]];
+                        pdfOverlay.setBounds(b);
+                        map.fitBounds(b);
+                        if(!isLocked) { 
+                            clearControlHandles(); 
+                            // FIX V26: Convert Leaflet LatLngBounds object to Array
+                            const bObj = pdfOverlay.getBounds();
+                            createControlHandles([bObj.getNorthWest(), bObj.getSouthEast()]);
+                        }
+                    }
                 }
                 
-                // Restore Ref Markers (Safe Check)
+                // Restore Ref Markers
                 if(d.refMarkers && Array.isArray(d.refMarkers)) {
+                    log(`Restoring ${d.refMarkers.length} RefMarkers...`);
                     refMarkersData = d.refMarkers;
                     let count = 0;
-                    d.refMarkers.forEach(row => {
-                        const lat = row.lat, lng = row.lng;
-                        if(row.code) refDataMap[row.code] = row.w || "";
-                        
-                        const popupHtml = `
-                            <div style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                                <b style="cursor:pointer; color:#2980b9; text-decoration:underline;" 
-                                   title="點擊複製" 
-                                   onclick="navigator.clipboard.writeText('${row.code}').then(()=>alert('已複製: ${row.code}'))">
-                                   ${row.code}
-                                </b>
-                                <span style="font-size:12px; color:#666;">(點擊複製)</span>
-                            </div>
-                            <div style="margin-top:4px;">${row.w||''}</div>
-                        `;
-                        L.circleMarker([lat, lng], { color: 'green', fillColor: '#90EE90', fillOpacity: 0.8, radius: 5 })
+                    d.refMarkers.forEach((row, idx) => {
+                        try {
+                            if (!row || typeof row.lat !== 'number' || typeof row.lng !== 'number') {
+                                log(`Skipping invalid RefMarker at index ${idx}`);
+                                return;
+                            }
+
+                            const lat = row.lat, lng = row.lng;
+                            if(row.code) refDataMap[row.code] = row.w || "";
+                            
+                            const popupHtml = `
+                                <div style="font-size:14px; display:flex; align-items:center; gap:8px;">
+                                    <b style="cursor:pointer; color:#2980b9; text-decoration:underline;" 
+                                       title="點擊複製" 
+                                       onclick="navigator.clipboard.writeText('${row.code}').then(()=>alert('已複製: ${row.code}'))">
+                                       ${row.code}
+                                    </b>
+                                    <span style="font-size:12px; color:#666;">(點擊複製)</span>
+                                </div>
+                                <div style="margin-top:4px;">${row.w||''}</div>
+                            `;
+                            L.circleMarker([lat, lng], { color: 'green', fillColor: '#90EE90', fillOpacity: 0.8, radius: 5 })
                          .bindPopup(popupHtml).addTo(refMarkersLayer);
-                        count++;
+                            count++;
+                        } catch(ex) { err(`Error restoring RefMarker ${idx}`, ex); }
                     });
                     document.getElementById('ref-status').innerText = `✅ 已還原 ${count} 個 (含索引)`;
                 } else {
                     refMarkersData = []; 
                 }
 
-                // V23 Final: Remove Legacy Markers Load Block completely
-
                 // Restore Drawings
                 if(d.drawings && Array.isArray(d.drawings)) {
-                    d.drawings.forEach(item => {
-                        const color = item.color || '#ff0000';
-                        if(item.type === 'circle') createEditableCircle([item.lat, item.lng], item.radius, color);
-                        else if(item.type === 'line') createEditableLine(item.latlngs, color);
-                        else if(item.type === 'text') createEditableText([item.lat, item.lng], item.content, item.fontSize, color);
+                    log(`Restoring ${d.drawings.length} Drawings...`);
+                    d.drawings.forEach((item, idx) => {
+                        try {
+                            if (!item) return;
+
+                            const color = item.color || '#ff0000';
+                            if(item.type === 'circle') createEditableCircle([item.lat, item.lng], item.radius, color);
+                            else if(item.type === 'line') createEditableLine(item.latlngs, color);
+                            else if(item.type === 'text') createEditableText([item.lat, item.lng], item.content, item.fontSize, color);
+                        } catch(ex) { err(`Error restoring Drawing ${idx}`, ex); }
                     });
                 }
 
                 // Restore Street Lights
                 if(d.streetLights && Array.isArray(d.streetLights)) {
-                    d.streetLights.forEach(item => {
-                        createStreetLight(item.data); 
-                        
-                        const sl = streetLightsData[streetLightsData.length-1];
-                        // Safety check: skip if creation failed
-                        if(!sl) return;
+                    log(`Restoring ${d.streetLights.length} StreetLights...`);
+                    d.streetLights.forEach((item, idx) => {
+                        try {
+                            // 1. Basic Check
+                            if (!item) {
+                                log(`StreetLight at index ${idx} is NULL or Undefined. Skipping.`);
+                                return;
+                            }
+                            // 2. Data Check
+                            if (!item.data) {
+                                log(`StreetLight at index ${idx} missing 'data' property. Item: ${JSON.stringify(item)}`);
+                                return;
+                            }
 
-                        const newPt = L.latLng(item.lat, item.lng);
-                        sl.layers.marker.setLatLng(newPt);
-                        sl.layers.circle.setLatLng(newPt);
-                        sl.layers.textLabel.setLatLng([item.textLat, item.textLng]);
-                        const newHtml = generateLabelHtml(item.data.name, item.data.new_cap);
-                        sl.layers.textLabel.setIcon(L.divIcon({ 
-                            className: 'text-label', html: newHtml, iconSize: [150, 20], 
-                            iconAnchor: [-45, 10] 
-                        }));
+                            // 3. Create
+                            const slObj = createStreetLight(item.data); 
+                            
+                            // 4. Validate Creation
+                            if (!slObj) {
+                                log(`Failed to create StreetLight object at index ${idx}.`);
+                                return;
+                            }
+
+                            // 5. Restore Position (Safe Access)
+                            if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+                                const newPt = L.latLng(item.lat, item.lng);
+                                slObj.layers.marker.setLatLng(newPt);
+                                slObj.layers.circle.setLatLng(newPt);
+                            } else {
+                                log(`StreetLight index ${idx} has invalid lat/lng in root object: ${item.lat}, ${item.lng}`);
+                            }
+                            
+                            if (typeof item.textLat === 'number' && typeof item.textLng === 'number') {
+                                slObj.layers.textLabel.setLatLng([item.textLat, item.textLng]);
+                            }
+
+                            // 6. Update HTML Label
+                            const newHtml = generateLabelHtml(item.data.name, item.data.new_cap);
+                            slObj.layers.textLabel.setIcon(L.divIcon({ 
+                                className: 'text-label', html: newHtml, iconSize: [150, 20], 
+                                iconAnchor: [-45, 10] 
+                            }));
+
+                        } catch(ex) { err(`Critical Error restoring StreetLight ${idx}`, ex); }
                     });
+
                     document.getElementById('sl-status').innerText = `✅ 已還原 ${d.streetLights.length} 筆路燈`;
-                    try { updateFilter(); } catch(e) { console.warn("Filter update failed temporarily", e); }
+                    try { window.updateFilter(); } catch(e) { err("Filter update failed", e); }
                 }
-            } catch(err) { 
-                console.error(err); 
-                alert("讀取失敗：\n" + err.message); 
+
+                log("Project Loaded Complete.");
+
+            } catch(ex) { 
+                // FIX V24: Changed variable name from 'err' to 'ex' to avoid shadowing global function
+                err("Fatal Load Error", ex);
+                alert("讀取失敗：\n" + ex.message + "\n請點擊側邊欄的「下載除錯紀錄」並回報給開發者。"); 
             }
         };
         reader.readAsText(file);
     });
     
-    function clearDrawings(silent=false) { if(silent || confirm("確定清除?")) drawnItemsLayer.clearLayers(); }
-
+    log("Ready.");
 </script>
 </body>
 </html>
