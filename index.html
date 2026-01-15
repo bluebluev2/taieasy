@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台電送件小幫手 (V31 穩定版)</title>
+    <title>台電送件小幫手 (V33 座標與文字位移修復版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,9 +13,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        /* V31 Theme: Dark Power Engineering (Fixed Layout) */
+        /* V33 Theme */
         :root {
-            /* User Defined Palette */
             --bg-sidebar: #333333;
             --bg-card: #001219;
             --text-main: #eceff1;
@@ -28,8 +27,6 @@
             --danger: #ef5350;
             --success: #ffb74d;
             --radius: 4px;
-            
-            /* Derived Colors */
             --border-color: #455a64;
         }
 
@@ -39,7 +36,6 @@
             overflow: hidden; background: #e0e0e0;
         }
         
-        /* Sidebar Layout - Structural Fix */
         .sidebar { 
             width: 300px; 
             background: var(--bg-sidebar); 
@@ -54,7 +50,6 @@
         }
         .sidebar.collapsed { transform: translateX(-300px); margin-right: -300px; }
         
-        /* Scrollable Content Area */
         .sidebar-scroll-area {
             flex: 1;
             overflow-y: auto;
@@ -64,9 +59,7 @@
         .sidebar-scroll-area::-webkit-scrollbar { width: 8px; }
         .sidebar-scroll-area::-webkit-scrollbar-track { background: var(--bg-sidebar); }
         .sidebar-scroll-area::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
-        .sidebar-scroll-area::-webkit-scrollbar-thumb:hover { background: var(--accent-orange); }
 
-        /* Header */
         .sidebar h3 {
             margin-top: 0; margin-bottom: 20px; padding-bottom: 15px;
             border-bottom: 2px solid var(--accent-orange);
@@ -76,7 +69,6 @@
             text-transform: uppercase;
         }
 
-        /* Toggle Button - Fixed */
         .toggle-btn {
             position: absolute; top: 15px; right: -40px;
             width: 40px; height: 40px; 
@@ -87,7 +79,6 @@
         }
         .toggle-btn:hover { background: var(--bg-card); color: #fff; }
 
-        /* Card / Section Styling */
         .section { 
             margin-bottom: 16px; 
             padding: 15px; 
@@ -101,7 +92,6 @@
         label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 13px; color: var(--text-main); }
         .sub-text { font-size: 11px; color: var(--text-sub); margin-bottom: 6px; display: block; }
 
-        /* Inputs */
         input[type="text"], input[type="number"], select {
             width: 100%; padding: 8px; font-size: 13px; 
             border: 1px solid var(--border-color); border-radius: var(--radius); 
@@ -111,7 +101,6 @@
         input:focus, select:focus { outline: none; border-color: var(--accent-orange); box-shadow: 0 0 0 2px rgba(255, 183, 3, 0.4); }
         input[type="file"] { font-size: 12px; color: var(--text-sub); }
 
-        /* Buttons */
         button { 
             width: 100%; padding: 9px 12px; margin-top: 10px; cursor: pointer; 
             border: none; border-radius: var(--radius); 
@@ -122,36 +111,20 @@
         button:hover { background: var(--btn-hover); color: white; transform: translateY(-1px); }
         button:active { transform: translateY(0); }
 
-        /* Button Variants */
         button.primary { background: var(--accent-orange); color: #263238; } 
         button.action  { background: var(--btn-primary); color: #001219; }
         button.success { background: var(--success); color: #001219; }
-        
         button.danger  { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
         button.danger:hover { background: var(--danger); color: white; }
-        
-        button.outline { 
-            background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub); font-weight: normal;
-        }
+        button.outline { background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub); font-weight: normal; }
         button.outline:hover { border-color: var(--text-main); color: var(--text-main); background: rgba(255,255,255,0.05); }
 
-        /* Debug Button */
-        .debug-footer {
-            margin-top: 20px;
-            padding-top: 20px;
-            text-align: center;
-            border-top: 1px dashed var(--border-color);
-        }
-        button.debug { 
-            background: transparent; color: var(--text-sub); 
-            font-size: 11px; text-decoration: underline; margin: 0; padding: 5px; width: auto; font-weight: normal;
-        }
+        .debug-footer { margin-top: 20px; padding-top: 20px; text-align: center; border-top: 1px dashed var(--border-color); }
+        button.debug { background: transparent; color: var(--text-sub); font-size: 11px; text-decoration: underline; margin: 0; padding: 5px; width: auto; font-weight: normal; }
         button.debug:hover { color: var(--accent-orange); background: transparent; }
 
-        /* Layout Helpers */
         .row { display: flex; gap: 8px; align-items: center; }
         .row > * { flex: 1; }
-        
         .filter-controls { display: flex; gap: 6px; margin-top: 10px; }
         .filter-controls select { flex: 2; }
         .filter-controls button { flex: 1; margin-top: 0; padding: 8px; }
@@ -160,21 +133,15 @@
         .draw-tools button { flex: 1; margin-top: 0; background: #263238; color: var(--text-main); border: 1px solid #455a64; color: #eceff1; }
         .draw-tools button.active { background: var(--accent-orange); color: #001219; border-color: var(--accent-orange); }
         
-        .tool-options { 
-            display: flex; align-items: center; gap: 10px; margin-top: 8px; 
-            background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); 
-        }
-
+        .tool-options { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); }
         .status-msg { font-size: 11px; color: var(--success); margin-top: 6px; font-weight: bold; text-align: right; }
 
-        /* Map */
         #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #cfd8dc; }
         
         .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #000; border-radius: 0; cursor: nwse-resize; }
         .move-handle-icon { background: var(--accent-orange); border: 2px solid #fff; border-radius: 4px; color: #000; text-align: center; font-size: 16px; line-height: 18px; cursor: move; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .drag-point-icon { background: var(--btn-hover); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.4); cursor: move; }
 
-        /* Edit Panel */
         #edit-panel {
             position: absolute; top: 80px; left: 340px; width: 280px;
             background: var(--bg-sidebar); border: 2px solid var(--accent-orange);
@@ -409,7 +376,6 @@
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    // Explicitly define global functions to prevent ReferenceErrors from HTML buttons
     window.toggleSidebar = function() {
         document.getElementById('sidebar').classList.toggle('collapsed');
         setTimeout(() => { map.invalidateSize(); }, 300);
@@ -448,7 +414,7 @@
             } else {
                 msgDiv.innerHTML = `✅ ${file.name.substring(0,5)} (自動白邊)`;
                 currentBaseBounds = gridInfo.bounds;
-                initialBounds = gridInfo.bounds; // Removed scaling
+                initialBounds = gridInfo.bounds; 
             }
         } else {
             msgDiv.innerText = `⚠️ 未偵測到圖號`;
@@ -497,8 +463,6 @@
         const p2 = proj4("EPSG:3828", "EPSG:4326", [endX, endY]);
         return { type: 'grid', bounds: [[p2[1], p1[0]], [p1[1], p2[0]]] };
     }
-
-    // Removed applyScale and recalcBounds as requested
 
     function clearControlHandles() {
         if (boundsHandleNW) map.removeLayer(boundsHandleNW);
@@ -658,7 +622,6 @@
         return slObj;
     }
 
-    // Explicitly Global Functions
     window.addManualStreetLight = function() {
         const name = prompt("請輸入路燈名稱/編號:", "新路燈");
         if(name === null) return; 
@@ -994,19 +957,51 @@
     });
     window.clearRefMarkers = function() { refMarkersLayer.clearLayers(); refDataMap = {}; refMarkersData = []; };
     
+    // --- V33 EXPORT PDF FIX with Visual Offset ---
     window.exportPDF = async function() {
         if (!pdfDocBytes || !pdfOverlay) return alert("請先上傳 PDF");
         try {
-            const { PDFDocument, rgb } = PDFLib;
+            const { PDFDocument, rgb, degrees } = PDFLib;
             const pdfDoc = await PDFDocument.load(pdfDocBytes);
             const page = pdfDoc.getPages()[0];
-            const { width: pdfW, height: pdfH } = page.getSize();
+            
+            // 1. 取得頁面原始物理尺寸與旋轉角度
+            const { width, height } = page.getSize();
+            const rotation = (page.getRotation().angle || 0) % 360; 
+
+            // 2. 判斷「視覺上」的寬高 (用於計算相對位置)
+            // 如果轉了 90 或 270 度，視覺寬度其實是物理高度
+            let visW = width, visH = height;
+            if (rotation === 90 || rotation === 270) {
+                visW = height;
+                visH = width;
+            }
+
             const b = pdfOverlay.getBounds();
             const north = b.getNorth(), south = b.getSouth(), east = b.getEast(), west = b.getWest();
 
-            function toPdfPoint(lat, lng) {
-                return { x: ((lng - west)/(east - west))*pdfW, y: ((lat - south)/(north - south))*pdfH };
+            // 3. 座標轉換函式 (核心修復)
+            // 將「視覺座標 (vx, vy)」轉換回「物理座標 (px, py)」
+            // 注意：這裡假設 vx, vy 原點在「視覺左下角」(PDF 標準) 還是「視覺左上角」？
+            // 根據 V33 的 toVisualPoint 邏輯，Lat(0) 對應 Y(0) 是底部，Lat(1) 對應 Y(H) 是頂部。
+            // 所以 Visual Y 也是向上增長的 (PDF 標準)。
+            function transformPoint(vx, vy) {
+                if (rotation === 0) return { x: vx, y: vy };
+                if (rotation === 90) return { x: width - vy, y: vx };
+                if (rotation === 180) return { x: width - vx, y: height - vy };
+                if (rotation === 270) return { x: vy, y: height - vx };
+                return { x: vx, y: vy };
             }
+
+            // 4. 計算視覺座標 (Visual Coordinate)
+            function toVisualPoint(lat, lng) {
+                // 這裡使用 visW 和 visH，因為這是我們在地圖上看到的「橫向」比例
+                return { 
+                    x: ((lng - west)/(east - west)) * visW, 
+                    y: ((lat - south)/(north - south)) * visH 
+                };
+            }
+
             const hexToRgb = (hex) => {
                 const r = parseInt(hex.slice(1, 3), 16) / 255;
                 const g = parseInt(hex.slice(3, 5), 16) / 255;
@@ -1031,58 +1026,95 @@
             for (const sl of streetLightsData) {
                 if(currentFilter !== 'all' && sl.data.processType !== currentFilter) continue;
 
+                // A. 計算圓心 (Visual Space)
                 const lat = sl.layers.circle.getLatLng().lat;
                 const lng = sl.layers.circle.getLatLng().lng;
-                const pt = toPdfPoint(lat, lng);
+                const vCirclePt = toVisualPoint(lat, lng);
                 
+                // B. 計算半徑 (Visual Space)
                 const r = sl.data.radius || 7;
-                const edgePt = toPdfPoint(lat + r/111111, lng); 
-                const pdfR = Math.abs(edgePt.y - pt.y);
-                page.drawCircle({ x: pt.x, y: pt.y, size: pdfR, borderColor: rgb(1,0,0), borderWidth: 2 });
-
-                const textLat = sl.layers.textLabel.getLatLng().lat;
-                const textLng = sl.layers.textLabel.getLatLng().lng;
-                const txtPt = toPdfPoint(textLat, textLng);
+                // 取一個邊緣點計算視覺距離
+                const vEdgePt = toVisualPoint(lat + r/111111, lng); 
+                const visualRadius = Math.abs(vEdgePt.y - vCirclePt.y); // 在視覺Y軸上的長度
                 
+                // 繪製圓圈 (Transform to Physical)
+                const pCirclePt = transformPoint(vCirclePt.x, vCirclePt.y);
+                page.drawCircle({ 
+                    x: pCirclePt.x, 
+                    y: pCirclePt.y, 
+                    size: visualRadius, 
+                    borderColor: rgb(1,0,0), 
+                    borderWidth: 2 
+                });
+
+                // C. 繪製文字 (應用偏移)
                 const labelText = sl.data.name + (sl.data.new_cap ? `(${sl.data.new_cap})` : "");
                 
                 if(labelText.trim()) {
                     const pngBytes = await textToImageBytes(labelText, 14, '#ff0000');
                     const pngImage = await pdfDoc.embedPng(pngBytes);
                     const dims = pngImage.scale(0.25);
+
+                    // 關鍵修正：強制設定文字在圓圈右側
+                    // 計算目標視覺位置：圓心 X + 半徑 + 緩衝 5 單位
+                    // Y 軸維持圓心高度，但需要扣掉文字高度的一半來垂直置中 (因為 drawImage 通常從左下/左上畫，PDFLib 0度時通常是左下)
+                    // 為了保險，我們先計算 Anchor Point，然後 Transform
+                    
+                    const textVisualX = vCirclePt.x + visualRadius + 4; // 強制向右偏移
+                    const textVisualY = vCirclePt.y - (dims.height / 2); // 垂直置中修正
+                    
+                    const pTextPt = transformPoint(textVisualX, textVisualY);
+                    
                     page.drawImage(pngImage, { 
-                        x: txtPt.x + 18, 
-                        y: txtPt.y - (dims.height/2), 
+                        x: pTextPt.x, 
+                        y: pTextPt.y, 
                         width: dims.width, 
-                        height: dims.height 
+                        height: dims.height,
+                        rotate: degrees(rotation) // 文字本身也要跟著轉
                     });
                 }
             }
 
             drawnItemsLayer.eachLayer(layer => {
+                // 手繪圖層維持原有的點對點轉換，暫不強制偏移，以免破壞用戶手繪意圖
                 if (layer.drawType === 'circle') {
                     let circleLayer; layer.eachLayer(l => { if(l instanceof L.Circle) circleLayer = l; });
                     if(circleLayer) {
-                        const pt = toPdfPoint(circleLayer.getLatLng().lat, circleLayer.getLatLng().lng);
-                        const pdfR = Math.abs(toPdfPoint(circleLayer.getLatLng().lat + circleLayer.getRadius()/111111, circleLayer.getLatLng().lng).y - pt.y);
-                        page.drawCircle({ x: pt.x, y: pt.y, size: pdfR, borderColor: hexToRgb(layer.color||'#ff0000'), borderWidth: 2 });
+                        const vPt = toVisualPoint(circleLayer.getLatLng().lat, circleLayer.getLatLng().lng);
+                        const pPt = transformPoint(vPt.x, vPt.y);
+                        
+                        const vEdge = toVisualPoint(circleLayer.getLatLng().lat + circleLayer.getRadius()/111111, circleLayer.getLatLng().lng);
+                        const vR = Math.abs(vEdge.y - vPt.y);
+                        
+                        page.drawCircle({ x: pPt.x, y: pPt.y, size: vR, borderColor: hexToRgb(layer.color||'#ff0000'), borderWidth: 2 });
                     }
                 } else if (layer.drawType === 'line') {
                     let lineLayer; layer.eachLayer(l => { if(l instanceof L.Polyline) lineLayer = l; });
                     if(lineLayer) {
                         const lls = lineLayer.getLatLngs();
-                        const p1 = toPdfPoint(lls[0].lat, lls[0].lng), p2 = toPdfPoint(lls[1].lat, lls[1].lng);
+                        const v1 = toVisualPoint(lls[0].lat, lls[0].lng);
+                        const v2 = toVisualPoint(lls[1].lat, lls[1].lng);
+                        const p1 = transformPoint(v1.x, v1.y);
+                        const p2 = transformPoint(v2.x, v2.y);
+                        
                         page.drawLine({ start: { x: p1.x, y: p1.y }, end: { x: p2.x, y: p2.y }, thickness: 2, color: hexToRgb(layer.color||'#ff0000') });
                     }
                 } else if (layer.drawType === 'text') {
-                    const pt = toPdfPoint(layer.getLatLng().lat, layer.getLatLng().lng);
+                    const vPt = toVisualPoint(layer.getLatLng().lat, layer.getLatLng().lng);
+                    const pPt = transformPoint(vPt.x, vPt.y);
                     const fs = parseInt(layer.fontSize || 16);
                     if(layer.textContent) {
                         (async () => {
                             const pngBytes = await textToImageBytes(layer.textContent, fs, layer.color||'#ff0000');
                             const pngImage = await pdfDoc.embedPng(pngBytes);
                             const dims = pngImage.scale(0.25);
-                            page.drawImage(pngImage, { x: pt.x, y: pt.y - (dims.height/2), width: dims.width, height: dims.height });
+                            page.drawImage(pngImage, { 
+                                x: pPt.x, 
+                                y: pPt.y, 
+                                width: dims.width, 
+                                height: dims.height,
+                                rotate: degrees(rotation)
+                            });
                         })();
                     }
                 }
@@ -1157,14 +1189,11 @@
                 const d = JSON.parse(evt.target.result);
                 log("JSON Parsed Successfully.");
                 
-                // Clear existing
                 clearStreetLights(true); 
                 clearRefMarkers(); 
                 clearDrawings(true); 
                 drawnItemsLayer.clearLayers(); 
 
-                // Restore Bounds
-                // FIX V24: Enhanced Safety Check for Bounds
                 if(d.bounds && pdfOverlay) {
                     if (typeof d.bounds.north !== 'number' || typeof d.bounds.south !== 'number' ||
                         typeof d.bounds.east !== 'number' || typeof d.bounds.west !== 'number') {
@@ -1176,14 +1205,12 @@
                         map.fitBounds(b);
                         if(!isLocked) { 
                             clearControlHandles(); 
-                            // FIX V26: Convert Leaflet LatLngBounds object to Array
                             const bObj = pdfOverlay.getBounds();
                             createControlHandles([bObj.getNorthWest(), bObj.getSouthEast()]);
                         }
                     }
                 }
                 
-                // Restore Ref Markers
                 if(d.refMarkers && Array.isArray(d.refMarkers)) {
                     log(`Restoring ${d.refMarkers.length} RefMarkers...`);
                     refMarkersData = d.refMarkers;
@@ -1219,7 +1246,6 @@
                     refMarkersData = []; 
                 }
 
-                // Restore Drawings
                 if(d.drawings && Array.isArray(d.drawings)) {
                     log(`Restoring ${d.drawings.length} Drawings...`);
                     d.drawings.forEach((item, idx) => {
@@ -1234,32 +1260,26 @@
                     });
                 }
 
-                // Restore Street Lights
                 if(d.streetLights && Array.isArray(d.streetLights)) {
                     log(`Restoring ${d.streetLights.length} StreetLights...`);
                     d.streetLights.forEach((item, idx) => {
                         try {
-                            // 1. Basic Check
                             if (!item) {
                                 log(`StreetLight at index ${idx} is NULL or Undefined. Skipping.`);
                                 return;
                             }
-                            // 2. Data Check
                             if (!item.data) {
                                 log(`StreetLight at index ${idx} missing 'data' property. Item: ${JSON.stringify(item)}`);
                                 return;
                             }
 
-                            // 3. Create
                             const slObj = createStreetLight(item.data); 
                             
-                            // 4. Validate Creation
                             if (!slObj) {
                                 log(`Failed to create StreetLight object at index ${idx}.`);
                                 return;
                             }
 
-                            // 5. Restore Position (Safe Access)
                             if (typeof item.lat === 'number' && typeof item.lng === 'number') {
                                 const newPt = L.latLng(item.lat, item.lng);
                                 slObj.layers.marker.setLatLng(newPt);
@@ -1272,7 +1292,6 @@
                                 slObj.layers.textLabel.setLatLng([item.textLat, item.textLng]);
                             }
 
-                            // 6. Update HTML Label
                             const newHtml = generateLabelHtml(item.data.name, item.data.new_cap);
                             slObj.layers.textLabel.setIcon(L.divIcon({ 
                                 className: 'text-label', html: newHtml, iconSize: [150, 20], 
@@ -1289,7 +1308,6 @@
                 log("Project Loaded Complete.");
 
             } catch(ex) { 
-                // FIX V24: Changed variable name from 'err' to 'ex' to avoid shadowing global function
                 err("Fatal Load Error", ex);
                 alert("讀取失敗：\n" + ex.message + "\n請點擊側邊欄的「下載除錯紀錄」並回報給開發者。"); 
             }
