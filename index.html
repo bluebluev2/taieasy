@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台電送件小幫手 (V33 座標與文字位移修復版)</title>
+    <title>台電送件小幫手 (V36 介面精簡版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,7 +13,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        /* V33 Theme */
+        /* V36 Theme */
         :root {
             --bg-sidebar: #333333;
             --bg-card: #001219;
@@ -133,12 +133,18 @@
         .draw-tools button { flex: 1; margin-top: 0; background: #263238; color: var(--text-main); border: 1px solid #455a64; color: #eceff1; }
         .draw-tools button.active { background: var(--accent-orange); color: #001219; border-color: var(--accent-orange); }
         
-        .tool-options { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); }
+        .tool-options { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); flex-wrap: wrap;}
         .status-msg { font-size: 11px; color: var(--success); margin-top: 6px; font-weight: bold; text-align: right; }
 
         #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #cfd8dc; }
         
-        .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #000; border-radius: 0; cursor: nwse-resize; }
+        /* Handles for 4 corners */
+        .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #000; border-radius: 0; cursor: pointer; }
+        .cursor-nw { cursor: nw-resize; }
+        .cursor-ne { cursor: ne-resize; }
+        .cursor-sw { cursor: sw-resize; }
+        .cursor-se { cursor: se-resize; }
+        
         .move-handle-icon { background: var(--accent-orange); border: 2px solid #fff; border-radius: 4px; color: #000; text-align: center; font-size: 16px; line-height: 18px; cursor: move; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .drag-point-icon { background: var(--btn-hover); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.4); cursor: move; }
 
@@ -188,8 +194,7 @@
             
             <div class="row">
                 <button id="btn-lock" class="outline" onclick="toggleLock()" disabled>🔒 鎖定位置</button>
-                <button class="outline" onclick="showBoundsInfo()">📋 邊界</button>
-            </div>
+                </div>
         </div>
 
         <div class="section">
@@ -243,7 +248,8 @@
                 <button onclick="setDrawMode('text')" id="btn-draw-text">Aa 字</button>
                 <button onclick="setDrawMode(null)" id="btn-draw-cancel" style="background:#455a64; color:#fff;">✋ 停止</button>
             </div>
-            <div class="tool-options">
+            
+            <div class="tool-options" id="tool-options-panel">
                 <div style="display:flex; align-items:center; gap:5px; flex:1;">
                     <span style="color:var(--text-sub); font-size:11px;">顏色:</span>
                     <input type="color" id="input-color" value="#e74c3c" style="width:25px; height:25px; border:none; cursor:pointer; padding:0; background:none;">
@@ -252,7 +258,15 @@
                     <span style="color:var(--text-sub); font-size:11px;">字級:</span>
                     <input type="number" id="input-font-size" value="16" min="8" max="72" style="width:40px; padding:2px; text-align:center;">
                 </div>
+                <div id="text-mode-container" style="display:none; width:100%; margin-top:8px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
+                    <span style="color:var(--text-sub); font-size:11px; display:block; margin-bottom:4px;">文字模式:</span>
+                    <select id="text-mode-select" style="width:100%;">
+                        <option value="custom">✍️ 自訂輸入 (預設)</option>
+                        <option value="preset_double">💡 印章: 雙臂燈</option>
+                    </select>
+                </div>
             </div>
+            
             <button onclick="clearDrawings()" class="outline" style="border-color:var(--danger); color:var(--danger);">🗑️ 清除所有手繪</button>
         </div>
 
@@ -358,7 +372,8 @@
     let pdfOverlay = null;
     let pdfDocBytes = null;
     let currentPdfName = "map"; 
-    let boundsHandleNW, boundsHandleSE, boundsHandleCenter;
+    
+    let boundsHandleNW, boundsHandleNE, boundsHandleSW, boundsHandleSE, boundsHandleCenter;
     let isLocked = false;
     let refMarkersLayer = L.layerGroup().addTo(map);
     let drawnItemsLayer = L.layerGroup().addTo(map);
@@ -466,49 +481,108 @@
 
     function clearControlHandles() {
         if (boundsHandleNW) map.removeLayer(boundsHandleNW);
+        if (boundsHandleNE) map.removeLayer(boundsHandleNE);
+        if (boundsHandleSW) map.removeLayer(boundsHandleSW);
         if (boundsHandleSE) map.removeLayer(boundsHandleSE);
         if (boundsHandleCenter) map.removeLayer(boundsHandleCenter);
     }
     
+    // 4 corners
     function createControlHandles(bounds) {
         if (!Array.isArray(bounds) && bounds.getNorthWest) {
             bounds = [bounds.getNorthWest(), bounds.getSouthEast()];
         }
         
-        const icon = L.divIcon({ className: 'handle-icon', iconSize: [12, 12] });
+        const llBounds = L.latLngBounds(bounds);
+        const nw = llBounds.getNorthWest();
+        const se = llBounds.getSouthEast();
+        const ne = llBounds.getNorthEast();
+        const sw = llBounds.getSouthWest();
+        
         const centerIcon = L.divIcon({ className: 'move-handle-icon', html: '+', iconSize: [20, 20], iconAnchor: [10, 10] });
-        boundsHandleNW = L.marker(bounds[0], { draggable: true, icon: icon }).addTo(map);
-        boundsHandleSE = L.marker(bounds[1], { draggable: true, icon: icon }).addTo(map);
-        const center = L.latLngBounds(bounds).getCenter();
-        boundsHandleCenter = L.marker(center, { draggable: true, icon: centerIcon, zIndexOffset: 1000 }).addTo(map);
+
+        boundsHandleNW = L.marker(nw, { draggable: true, icon: L.divIcon({ className: 'handle-icon cursor-nw', iconSize: [12, 12] }) }).addTo(map);
+        boundsHandleNE = L.marker(ne, { draggable: true, icon: L.divIcon({ className: 'handle-icon cursor-ne', iconSize: [12, 12] }) }).addTo(map);
+        boundsHandleSW = L.marker(sw, { draggable: true, icon: L.divIcon({ className: 'handle-icon cursor-sw', iconSize: [12, 12] }) }).addTo(map);
+        boundsHandleSE = L.marker(se, { draggable: true, icon: L.divIcon({ className: 'handle-icon cursor-se', iconSize: [12, 12] }) }).addTo(map);
+        
+        boundsHandleCenter = L.marker(llBounds.getCenter(), { draggable: true, icon: centerIcon, zIndexOffset: 1000 }).addTo(map);
 
         const handleResize = (e) => {
             const isRatioLocked = document.getElementById('aspect-ratio-check').checked;
             const target = e.target;
-            const isNW = (target === boundsHandleNW);
-            let anchor = isNW ? boundsHandleSE.getLatLng() : boundsHandleNW.getLatLng();
-            let current = target.getLatLng();
-            if (isRatioLocked) {
-                const oldB = pdfOverlay.getBounds();
-                const oNW = oldB.getNorthWest(), oSE = oldB.getSouthEast();
-                const ratio = (isNW ? (oNW.lng - oSE.lng) : (oSE.lng - oNW.lng)) / (isNW ? (oNW.lat - oSE.lat) : (oSE.lat - oNW.lat));
-                current.lng = anchor.lng + (current.lat - anchor.lat) * ratio;
-                target.setLatLng(current);
+            const current = target.getLatLng();
+            
+            const oldB = pdfOverlay.getBounds();
+            const oNW = oldB.getNorthWest();
+            const oSE = oldB.getSouthEast();
+            
+            let newNorth = oldB.getNorth();
+            let newSouth = oldB.getSouth();
+            let newEast = oldB.getEast();
+            let newWest = oldB.getWest();
+            
+            if (target === boundsHandleNW) {
+                newNorth = current.lat;
+                newWest = current.lng;
+                if (isRatioLocked) {
+                    const ratio = (oSE.lng - oNW.lng) / (oNW.lat - oSE.lat); 
+                    newWest = oSE.lng - (newNorth - oSE.lat) * ratio;
+                }
+            } else if (target === boundsHandleSE) {
+                newSouth = current.lat;
+                newEast = current.lng;
+                if (isRatioLocked) {
+                    const ratio = (oSE.lng - oNW.lng) / (oNW.lat - oSE.lat);
+                    newEast = oNW.lng + (oNW.lat - newSouth) * ratio;
+                }
+            } else if (target === boundsHandleNE) {
+                newNorth = current.lat;
+                newEast = current.lng;
+                const oSW = oldB.getSouthWest();
+                if (isRatioLocked) {
+                    const ratio = (oSE.lng - oNW.lng) / (oNW.lat - oSE.lat);
+                    newEast = oSW.lng + (newNorth - oSW.lat) * ratio;
+                }
+            } else if (target === boundsHandleSW) {
+                newSouth = current.lat;
+                newWest = current.lng;
+                const oNE = oldB.getNorthEast();
+                if (isRatioLocked) {
+                    const ratio = (oSE.lng - oNW.lng) / (oNW.lat - oSE.lat);
+                    newWest = oNE.lng - (oNE.lat - newSouth) * ratio;
+                }
             }
-            let newNW = isNW ? current : anchor, newSE = isNW ? anchor : current;
-            pdfOverlay.setBounds([newNW, newSE]);
-            boundsHandleCenter.setLatLng(L.latLngBounds([newNW, newSE]).getCenter());
+            
+            const newBounds = L.latLngBounds([[newNorth, newWest], [newSouth, newEast]]);
+            pdfOverlay.setBounds(newBounds);
+            updateAllHandles(newBounds);
         };
+        
+        const updateAllHandles = (b) => {
+            boundsHandleNW.setLatLng(b.getNorthWest());
+            boundsHandleNE.setLatLng(b.getNorthEast());
+            boundsHandleSW.setLatLng(b.getSouthWest());
+            boundsHandleSE.setLatLng(b.getSouthEast());
+            boundsHandleCenter.setLatLng(b.getCenter());
+        };
+
         const handleMove = (e) => {
             const newCenter = e.target.getLatLng();
             const oldCenter = pdfOverlay.getBounds().getCenter();
             const dLat = newCenter.lat - oldCenter.lat, dLng = newCenter.lng - oldCenter.lng;
             const b = pdfOverlay.getBounds();
-            pdfOverlay.setBounds([[b.getNorth()+dLat, b.getWest()+dLng], [b.getSouth()+dLat, b.getEast()+dLng]]);
-            boundsHandleNW.setLatLng([b.getNorth()+dLat, b.getWest()+dLng]);
-            boundsHandleSE.setLatLng([b.getSouth()+dLat, b.getEast()+dLng]);
+            const newBounds = L.latLngBounds([
+                [b.getNorth()+dLat, b.getWest()+dLng], 
+                [b.getSouth()+dLat, b.getEast()+dLng]
+            ]);
+            pdfOverlay.setBounds(newBounds);
+            updateAllHandles(newBounds);
         };
+
         boundsHandleNW.on('drag', handleResize);
+        boundsHandleNE.on('drag', handleResize);
+        boundsHandleSW.on('drag', handleResize);
         boundsHandleSE.on('drag', handleResize);
         boundsHandleCenter.on('drag', handleMove);
     }
@@ -530,8 +604,6 @@
     };
     
     document.getElementById('opacity-slider').addEventListener('input', e => { if(pdfOverlay) pdfOverlay.setOpacity(e.target.value); });
-    
-    window.showBoundsInfo = function() { if(pdfOverlay) alert(pdfOverlay.getBounds().toBBoxString()); };
 
     // --- Street Lights Logic ---
     document.getElementById('sl-csv-input').addEventListener('change', function(e) {
@@ -831,6 +903,15 @@
         currentDrawMode = mode;
         map.dragging.enable();
         document.querySelectorAll('.draw-tools button').forEach(b => b.classList.remove('active'));
+        
+        // Toggle Text Mode UI
+        const textModeContainer = document.getElementById('text-mode-container');
+        if(mode === 'text') {
+            textModeContainer.style.display = 'block';
+        } else {
+            textModeContainer.style.display = 'none';
+        }
+
         if(mode) {
             document.getElementById('btn-draw-'+mode).classList.add('active');
             map.dragging.disable(); map.getContainer().style.cursor = 'crosshair';
@@ -886,9 +967,20 @@
         if(currentDrawMode === 'circle') tempDrawShape = L.circle(startPoint, {radius: 1, color:color, weight:2}).addTo(map);
         else if(currentDrawMode === 'line') tempDrawShape = L.polyline([startPoint, startPoint], {color:color, weight:3}).addTo(map);
         else if(currentDrawMode === 'text') {
-            const text = prompt("輸入文字:", "註記");
-            if(text) { const fs = document.getElementById('input-font-size').value || 16; createEditableText(startPoint, text, fs, color); }
-            setDrawMode(null);
+            const textMode = document.getElementById('text-mode-select').value;
+            let text = "";
+            
+            // V36: Updated text for preset
+            if (textMode === 'preset_double') {
+                text = "雙臂燈"; 
+            } else {
+                text = prompt("輸入文字:", "註記");
+            }
+
+            if(text) { 
+                const fs = document.getElementById('input-font-size').value || 16; 
+                createEditableText(startPoint, text, fs, color); 
+            }
         }
     });
     map.on('mousemove', function(e) {
@@ -903,7 +995,11 @@
             if(currentDrawMode === 'circle') { const r = tempDrawShape.getRadius(); map.removeLayer(tempDrawShape); createEditableCircle(startPoint, r, color); }
             else if (currentDrawMode === 'line') { const lls = tempDrawShape.getLatLngs(); map.removeLayer(tempDrawShape); createEditableLine(lls, color); }
         }
-        startPoint = null; tempDrawShape = null; setDrawMode(null);
+        startPoint = null; tempDrawShape = null; 
+        
+        if(currentDrawMode !== 'text') {
+           setDrawMode(null);
+        }
     });
 
     document.getElementById('ref-csv-input').addEventListener('change', function(e) {
@@ -957,20 +1053,25 @@
     });
     window.clearRefMarkers = function() { refMarkersLayer.clearLayers(); refDataMap = {}; refMarkersData = []; };
     
-    // --- V33 EXPORT PDF FIX with Visual Offset ---
+    // --- EXPORT PDF ---
     window.exportPDF = async function() {
         if (!pdfDocBytes || !pdfOverlay) return alert("請先上傳 PDF");
         try {
             const { PDFDocument, rgb, degrees } = PDFLib;
             const pdfDoc = await PDFDocument.load(pdfDocBytes);
+            
+            const filterVal = document.getElementById('sl-filter').value;
+            const typeName = (filterVal === 'all') ? '全案' : filterVal;
+            const finalFileName = getTimestampedName(`${currentPdfName}_${typeName}`, "pdf");
+            
+            pdfDoc.setTitle(finalFileName);
+
             const page = pdfDoc.getPages()[0];
             
-            // 1. 取得頁面原始物理尺寸與旋轉角度
             const { width, height } = page.getSize();
             const rotation = (page.getRotation().angle || 0) % 360; 
 
-            // 2. 判斷「視覺上」的寬高 (用於計算相對位置)
-            // 如果轉了 90 或 270 度，視覺寬度其實是物理高度
+            // 視覺寬高 (Visual Width/Height)
             let visW = width, visH = height;
             if (rotation === 90 || rotation === 270) {
                 visW = height;
@@ -980,11 +1081,6 @@
             const b = pdfOverlay.getBounds();
             const north = b.getNorth(), south = b.getSouth(), east = b.getEast(), west = b.getWest();
 
-            // 3. 座標轉換函式 (核心修復)
-            // 將「視覺座標 (vx, vy)」轉換回「物理座標 (px, py)」
-            // 注意：這裡假設 vx, vy 原點在「視覺左下角」(PDF 標準) 還是「視覺左上角」？
-            // 根據 V33 的 toVisualPoint 邏輯，Lat(0) 對應 Y(0) 是底部，Lat(1) 對應 Y(H) 是頂部。
-            // 所以 Visual Y 也是向上增長的 (PDF 標準)。
             function transformPoint(vx, vy) {
                 if (rotation === 0) return { x: vx, y: vy };
                 if (rotation === 90) return { x: width - vy, y: vx };
@@ -993,9 +1089,7 @@
                 return { x: vx, y: vy };
             }
 
-            // 4. 計算視覺座標 (Visual Coordinate)
             function toVisualPoint(lat, lng) {
-                // 這裡使用 visW 和 visH，因為這是我們在地圖上看到的「橫向」比例
                 return { 
                     x: ((lng - west)/(east - west)) * visW, 
                     y: ((lat - south)/(north - south)) * visH 
@@ -1026,18 +1120,15 @@
             for (const sl of streetLightsData) {
                 if(currentFilter !== 'all' && sl.data.processType !== currentFilter) continue;
 
-                // A. 計算圓心 (Visual Space)
+                // A. 繪製圓圈 (Draw Circle)
                 const lat = sl.layers.circle.getLatLng().lat;
                 const lng = sl.layers.circle.getLatLng().lng;
                 const vCirclePt = toVisualPoint(lat, lng);
                 
-                // B. 計算半徑 (Visual Space)
                 const r = sl.data.radius || 7;
-                // 取一個邊緣點計算視覺距離
                 const vEdgePt = toVisualPoint(lat + r/111111, lng); 
-                const visualRadius = Math.abs(vEdgePt.y - vCirclePt.y); // 在視覺Y軸上的長度
+                const visualRadius = Math.abs(vEdgePt.y - vCirclePt.y); 
                 
-                // 繪製圓圈 (Transform to Physical)
                 const pCirclePt = transformPoint(vCirclePt.x, vCirclePt.y);
                 page.drawCircle({ 
                     x: pCirclePt.x, 
@@ -1047,7 +1138,7 @@
                     borderWidth: 2 
                 });
 
-                // C. 繪製文字 (應用偏移)
+                // B. 繪製文字 (Draw Text)
                 const labelText = sl.data.name + (sl.data.new_cap ? `(${sl.data.new_cap})` : "");
                 
                 if(labelText.trim()) {
@@ -1055,13 +1146,12 @@
                     const pngImage = await pdfDoc.embedPng(pngBytes);
                     const dims = pngImage.scale(0.25);
 
-                    // 關鍵修正：強制設定文字在圓圈右側
-                    // 計算目標視覺位置：圓心 X + 半徑 + 緩衝 5 單位
-                    // Y 軸維持圓心高度，但需要扣掉文字高度的一半來垂直置中 (因為 drawImage 通常從左下/左上畫，PDFLib 0度時通常是左下)
-                    // 為了保險，我們先計算 Anchor Point，然後 Transform
+                    const textLat = sl.layers.textLabel.getLatLng().lat;
+                    const textLng = sl.layers.textLabel.getLatLng().lng;
+                    const vTextPt = toVisualPoint(textLat, textLng);
                     
-                    const textVisualX = vCirclePt.x + visualRadius + 4; // 強制向右偏移
-                    const textVisualY = vCirclePt.y - (dims.height / 2); // 垂直置中修正
+                    const textVisualX = vTextPt.x + visualRadius + 4; 
+                    const textVisualY = vTextPt.y - (dims.height / 2); 
                     
                     const pTextPt = transformPoint(textVisualX, textVisualY);
                     
@@ -1070,13 +1160,12 @@
                         y: pTextPt.y, 
                         width: dims.width, 
                         height: dims.height,
-                        rotate: degrees(rotation) // 文字本身也要跟著轉
+                        rotate: degrees(rotation) 
                     });
                 }
             }
 
             drawnItemsLayer.eachLayer(layer => {
-                // 手繪圖層維持原有的點對點轉換，暫不強制偏移，以免破壞用戶手繪意圖
                 if (layer.drawType === 'circle') {
                     let circleLayer; layer.eachLayer(l => { if(l instanceof L.Circle) circleLayer = l; });
                     if(circleLayer) {
@@ -1125,9 +1214,9 @@
             const outBytes = await pdfDoc.save();
             const blob = new Blob([outBytes], { type: 'application/pdf' });
             const link = document.createElement('a');
-            const fname = getTimestampedName(currentPdfName, "pdf");
+            
             link.href = URL.createObjectURL(blob);
-            link.download = fname;
+            link.download = finalFileName;
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         } catch (ex) { 
             err("Export Error: " + ex.message, ex);
