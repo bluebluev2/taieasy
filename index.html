@@ -3,29 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>台電送件小幫手 (V36 介面精簡版)</title>
+    <title>台電送件小幫手 (V44.2 修正版)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        /* V36 Theme */
+        /* V44.1 Theme */
         :root {
             --bg-sidebar: #333333;
             --bg-card: #001219;
             --text-main: #eceff1;
             --text-sub: #b0bec5;
-            --accent-orange: #ffb703;
+            --accent-orange: #ffb703; /* 主題黃色 */
             --btn-primary: #ffb703;
-            --btn-hover: #ffb703;
+            --btn-hover: #ffca28;     /*稍微亮一點的黃色作為Hover*/
             --input-bg: #ffffff;
             --input-text: #455a64;
             --danger: #ef5350;
             --success: #ffb74d;
+            --success-green: #4caf50;
             --radius: 4px;
             --border-color: #455a64;
         }
@@ -34,6 +36,20 @@
             margin: 0; padding: 0; display: flex; height: 100vh; 
             font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
             overflow: hidden; background: #e0e0e0;
+        }
+
+        /* 全域一致性修正：強制所有瀏覽器元件使用主題色 */
+        input[type="range"], 
+        input[type="checkbox"], 
+        input[type="radio"] {
+            accent-color: var(--accent-orange);
+            cursor: pointer;
+        }
+
+        /* 全域一致性修正：反白文字時的顏色 */
+        ::selection {
+            background: var(--accent-orange);
+            color: #001219;
         }
         
         .sidebar { 
@@ -87,6 +103,7 @@
             border: 1px solid rgba(255,255,255,0.05);
             border-left: 4px solid var(--accent-orange); 
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: relative; 
         }
         
         label { display: block; font-weight: 500; margin-bottom: 8px; font-size: 13px; color: var(--text-main); }
@@ -119,6 +136,25 @@
         button.outline { background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub); font-weight: normal; }
         button.outline:hover { border-color: var(--text-main); color: var(--text-main); background: rgba(255,255,255,0.05); }
 
+        /* Layer Visibility Toggle Button Style */
+        .layer-toggle-btn {
+            position: absolute;
+            top: 10px; right: 10px;
+            width: 30px; height: 30px;
+            padding: 0; margin: 0;
+            background: transparent; border: none;
+            color: var(--text-main); font-size: 18px;
+            cursor: pointer; z-index: 10;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.2s;
+        }
+        .layer-toggle-btn:hover { background: rgba(255, 255, 255, 0.1); border-radius: 50%; }
+        .layer-toggle-btn.off { opacity: 0.6; }
+        .layer-toggle-btn.off::after {
+            content: ''; position: absolute; top: 50%; left: 20%; right: 20%; height: 2px;
+            background: var(--danger); transform: rotate(-45deg); box-shadow: 0 0 2px rgba(0,0,0,0.8);
+        }
+
         .debug-footer { margin-top: 20px; padding-top: 20px; text-align: center; border-top: 1px dashed var(--border-color); }
         button.debug { background: transparent; color: var(--text-sub); font-size: 11px; text-decoration: underline; margin: 0; padding: 5px; width: auto; font-weight: normal; }
         button.debug:hover { color: var(--accent-orange); background: transparent; }
@@ -133,7 +169,12 @@
         .draw-tools button { flex: 1; margin-top: 0; background: #263238; color: var(--text-main); border: 1px solid #455a64; color: #eceff1; }
         .draw-tools button.active { background: var(--accent-orange); color: #001219; border-color: var(--accent-orange); }
         
-        .tool-options { display: flex; align-items: center; gap: 10px; margin-top: 8px; background: rgba(255,255,255,0.05); padding: 8px; border-radius: var(--radius); flex-wrap: wrap;}
+        .tool-options { 
+            display: flex; flex-direction: column; gap: 8px; 
+            margin-top: 8px; background: rgba(255,255,255,0.05); 
+            padding: 8px; border-radius: var(--radius); 
+        }
+        
         .status-msg { font-size: 11px; color: var(--success); margin-top: 6px; font-weight: bold; text-align: right; }
 
         #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #cfd8dc; }
@@ -169,6 +210,50 @@
         .panel-buttons { display: flex; gap: 10px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
         .close-panel-btn { background: transparent; border: none; color: var(--text-sub); cursor: pointer; font-size: 18px; width: auto; margin:0; padding:0; }
         .close-panel-btn:hover { color: white; }
+
+        /* Dark Theme for Leaflet Popups */
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip {
+            background: var(--bg-sidebar);
+            color: var(--text-main);
+            border: 1px solid var(--accent-orange);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            border-radius: var(--radius);
+        }
+        .leaflet-popup-content {
+            margin: 13px 15px;
+            line-height: 1.4;
+        }
+        .leaflet-container a.leaflet-popup-close-button {
+            color: var(--text-sub);
+            padding: 8px;
+        }
+        .leaflet-container a.leaflet-popup-close-button:hover {
+            color: var(--accent-orange);
+        }
+        /* Style for inputs inside popup */
+        .leaflet-popup-content select, 
+        .leaflet-popup-content input[type="color"] {
+            background: #fff;
+            color: #000;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+        }
+        .leaflet-popup-content label {
+            color: var(--accent-orange);
+            font-weight: bold;
+            font-size: 12px;
+        }
+        /* Tooltip Style Override */
+        .leaflet-tooltip {
+            background: var(--bg-sidebar);
+            border: 1px solid var(--accent-orange);
+            color: var(--text-main);
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        }
+        .leaflet-tooltip-top:before { border-top-color: var(--accent-orange); }
+        .leaflet-tooltip-bottom:before { border-bottom-color: var(--accent-orange); }
+        .leaflet-tooltip-left:before { border-left-color: var(--accent-orange); }
+        .leaflet-tooltip-right:before { border-right-color: var(--accent-orange); }
     </style>
 </head>
 <body>
@@ -177,10 +262,10 @@
     <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
     
     <div class="sidebar-scroll-area">
-        <h3>⚡ 台電送件小幫手</h3>
+        <h3>⚡ 台電送件小幫手 BETA版</h3>
 
         <div class="section">
-            <label>1. 底圖設定(台帳圖資PDF)</label>
+            <label>1. 底圖設定 (台帳圖資.PDF)</label>
             <input type="file" id="pdf-input" accept="application/pdf">
             <div id="auto-detect-msg" class="status-msg" style="color:var(--text-sub)"></div>
             
@@ -194,12 +279,14 @@
             
             <div class="row">
                 <button id="btn-lock" class="outline" onclick="toggleLock()" disabled>🔒 鎖定位置</button>
-                </div>
+            </div>
         </div>
 
         <div class="section">
-            <label>2. 參考 G-Code (綠點)</label>
-            <span class="sub-text">* 欄位: G-code, G-x, G-y, G-W</span>
+            <button class="layer-toggle-btn" id="btn-toggle-ref" onclick="toggleRefLayer()" title="顯示/隱藏圖層">👁️</button>
+            
+            <label>2. 匯入台帳 (G-code_XXX.csv)</label>
+            <span class="sub-text">* 欄位: G-code, G-x, G-y, G-W, G-VA</span>
             <input type="file" id="ref-csv-input" accept=".csv">
             <div class="filter-controls">
                 <select id="csv-encoding">
@@ -212,8 +299,10 @@
         </div>
         
         <div class="section">
-            <label>3. 路燈資料匯入 (OUTPUT.csv)</label>
-            <span class="sub-text">* 欄位: name, x, y, G-code_1st</span>
+            <button class="layer-toggle-btn" id="btn-toggle-sl" onclick="toggleStreetLightLayer()" title="顯示/隱藏圖層">👁️</button>
+
+            <label>3. 匯入路燈資料 (換裝.csv)</label>
+            <span class="sub-text">* 欄位: name, x, y, G-code_1st...</span>
             <input type="file" id="sl-csv-input" accept=".csv">
             
             <div class="filter-controls">
@@ -228,20 +317,22 @@
             <div class="filter-controls">
                 <select id="sl-filter" onchange="updateFilter()">
                     <option value="all">👁️ 顯示全部</option>
-                    <option value="器變">🔧 器變</option>
-                    <option value="容變">💡 容變 (LED)</option>
-                    <option value="增設">➕ 增設</option>
-                    <option value="待確認">❓ 待確認 (無G-code)</option>
+                    <option value="器變">🔧 器變 (鈉光燈→LED)</option>
+                    <option value="容變">💡 容變 (LED→LED)</option>
+                    <option value="增設">➕ 增設 (G-code空白)</option>
+                    <option value="待確認">❓ 待確認 (G-code對應不到參考點)</option>
                 </select>
                 <button class="success" onclick="addManualStreetLight()" style="margin:0;">➕ 新增</button>
             </div>
             <div id="sl-status" class="status-msg"></div>
             
-            <button class="action" onclick="exportRegistrationSheet()">📊 匯出篩選後登記單</button>
+            <button class="action" onclick="exportExcelSheet()">📊 匯出登記單 (Excel)</button>
         </div>
 
         <div class="section">
-            <label>4. 手動繪圖 (Draw)</label>
+            <button class="layer-toggle-btn" id="btn-toggle-draw" onclick="toggleDrawnLayer()" title="顯示/隱藏圖層">👁️</button>
+
+            <label>4. 手動繪圖</label>
             <div class="draw-tools">
                 <button onclick="setDrawMode('circle')" id="btn-draw-circle">⭕ 圓</button>
                 <button onclick="setDrawMode('line')" id="btn-draw-line">➖ 線</button>
@@ -250,20 +341,35 @@
             </div>
             
             <div class="tool-options" id="tool-options-panel">
-                <div style="display:flex; align-items:center; gap:5px; flex:1;">
-                    <span style="color:var(--text-sub); font-size:11px;">顏色:</span>
-                    <input type="color" id="input-color" value="#e74c3c" style="width:25px; height:25px; border:none; cursor:pointer; padding:0; background:none;">
+                <div style="width:100%; display:flex; gap:10px; align-items:center;">
+                    <div style="flex:1; display:flex; align-items:center; gap:5px; min-width: 0;">
+                        <span style="color:var(--text-sub); font-size:11px; white-space: nowrap;">圖層類別:</span>
+                        <select id="draw-category-select" style="font-size:11px; padding:2px; flex:1;">
+                            <option value="總是顯示">總是顯示</option>
+                            <option value="器變">🔧 器變</option>
+                            <option value="容變">💡 容變</option>
+                            <option value="增設">➕ 增設</option>
+                            <option value="待確認">❓ 待確認</option>
+                        </select>
+                    </div>
+                    <div style="flex:0 0 auto; display:flex; align-items:center; gap:5px;">
+                        <span style="color:var(--text-sub); font-size:11px; white-space: nowrap;">顏色:</span>
+                        <input type="color" id="input-color" value="#e74c3c" style="width:25px; height:25px; border:none; cursor:pointer; padding:0; background:none;">
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:5px; flex:1;">
-                    <span style="color:var(--text-sub); font-size:11px;">字級:</span>
-                    <input type="number" id="input-font-size" value="16" min="8" max="72" style="width:40px; padding:2px; text-align:center;">
-                </div>
-                <div id="text-mode-container" style="display:none; width:100%; margin-top:8px; border-top:1px solid rgba(255,255,255,0.1); padding-top:5px;">
-                    <span style="color:var(--text-sub); font-size:11px; display:block; margin-bottom:4px;">文字模式:</span>
-                    <select id="text-mode-select" style="width:100%;">
-                        <option value="custom">✍️ 自訂輸入 (預設)</option>
-                        <option value="preset_double">💡 印章: 雙臂燈</option>
-                    </select>
+
+                <div id="text-tools-container" style="display:none; width:100%; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px; margin-top:4px;">
+                     <div style="display:flex; align-items:center; gap:5px; margin-bottom:8px;">
+                        <span style="color:var(--text-sub); font-size:11px;">文字大小:</span>
+                        <input type="number" id="input-font-size" value="16" min="8" max="72" style="width:40px; padding:2px; text-align:center;">
+                     </div>
+                     <div style="width:100%;">
+                        <span style="color:var(--text-sub); font-size:11px; display:block; margin-bottom:4px;">文字模式:</span>
+                        <select id="text-mode-select" style="width:100%;">
+                            <option value="custom">✍️ 自訂 (點位置再輸入)</option>
+                            <option value="preset_double">💡 印章: 雙臂燈</option>
+                        </select>
+                     </div>
                 </div>
             </div>
             
@@ -297,16 +403,16 @@
             當前類別: <b id="edit-type-display" style="color:var(--accent-orange)">--</b>
         </div>
 
-        <label>G-code (座標):</label>
+        <label>G-code (台帳圖號座標):</label>
         <input type="text" id="edit-gcode" placeholder="留空視為增設..." onchange="updateEditProcessType()">
         
         <label>變更前容量:</label>
-        <input list="list-old-cap" id="edit-old" placeholder="例如: 73W">
+        <input list="list-old-cap" id="edit-old" placeholder="例如: 73">
         
         <label>變更後容量(VA):</label>
-        <input list="list-new-cap" id="edit-new" placeholder="例如: 73VA">
+        <input list="list-new-cap" id="edit-new" placeholder="例如: 73">
 
-        <label>紅圈半徑 (公尺):</label>
+        <label>紅圈半徑:</label>
         <div class="radius-control">
             <input type="range" id="edit-radius-slider" min="1" max="20" step="0.5" value="7" style="flex:1;">
             <input type="number" id="edit-radius-input" value="7" min="1" max="20" step="0.5" style="width:50px; text-align:center;">
@@ -322,14 +428,16 @@
 <canvas id="text-helper-canvas" style="display:none;"></canvas>
 
 <datalist id="list-old-cap">
-    <option value="73W">
-    <option value="112W">
-    <option value="220W">
-    <option value="250W">
+    <option value="73">
+    <option value="112">
+    <option value="134">
+    <option value="220">
+    <option value="250">
 </datalist>
 <datalist id="list-new-cap">
-    <option value="73VA">
-    <option value="88VA">
+    <option value="73">
+    <option value="88">
+    <option value="134">
 </datalist>
 
 <script>
@@ -375,12 +483,23 @@
     
     let boundsHandleNW, boundsHandleNE, boundsHandleSW, boundsHandleSE, boundsHandleCenter;
     let isLocked = false;
+    
+    // Layer Groups
     let refMarkersLayer = L.layerGroup().addTo(map);
     let drawnItemsLayer = L.layerGroup().addTo(map);
     let streetLightsLayer = L.layerGroup().addTo(map);
+    
+    // Visibility State
+    let isRefLayerVisible = true;
+    let isStreetLightLayerVisible = true;
+    let isDrawnLayerVisible = true;
+
     let streetLightsData = []; 
     let refDataMap = {}; 
     let refMarkersData = []; 
+    
+    let allDrawings = []; 
+
     let currentBaseBounds = null;
     let currentDrawMode = null;
     let tempDrawShape = null;
@@ -394,6 +513,43 @@
     window.toggleSidebar = function() {
         document.getElementById('sidebar').classList.toggle('collapsed');
         setTimeout(() => { map.invalidateSize(); }, 300);
+    };
+
+    // --- Toggle Functions ---
+    window.toggleRefLayer = function() {
+        const btn = document.getElementById('btn-toggle-ref');
+        if (isRefLayerVisible) {
+            map.removeLayer(refMarkersLayer);
+            btn.classList.add('off');
+        } else {
+            map.addLayer(refMarkersLayer);
+            btn.classList.remove('off');
+        }
+        isRefLayerVisible = !isRefLayerVisible;
+    };
+
+    window.toggleStreetLightLayer = function() {
+        const btn = document.getElementById('btn-toggle-sl');
+        if (isStreetLightLayerVisible) {
+            map.removeLayer(streetLightsLayer);
+            btn.classList.add('off');
+        } else {
+            map.addLayer(streetLightsLayer);
+            btn.classList.remove('off');
+        }
+        isStreetLightLayerVisible = !isStreetLightLayerVisible;
+    };
+    
+    window.toggleDrawnLayer = function() {
+        const btn = document.getElementById('btn-toggle-draw');
+        if (isDrawnLayerVisible) {
+            map.removeLayer(drawnItemsLayer);
+            btn.classList.add('off');
+        } else {
+            map.addLayer(drawnItemsLayer);
+            btn.classList.remove('off');
+        }
+        isDrawnLayerVisible = !isDrawnLayerVisible;
     };
 
     function getTimestampedName(baseName, ext) {
@@ -487,7 +643,6 @@
         if (boundsHandleCenter) map.removeLayer(boundsHandleCenter);
     }
     
-    // 4 corners
     function createControlHandles(bounds) {
         if (!Array.isArray(bounds) && bounds.getNorthWest) {
             bounds = [bounds.getNorthWest(), bounds.getSouthEast()];
@@ -625,8 +780,11 @@
                             lng: lng,
                             origLat: lat,
                             origLng: lng,
-                            old_cap: "",
-                            new_cap: "",
+                            old_cap: "", // Auto-filled in createStreetLight
+                            new_cap: row['變更後容量(VA)'] || "", 
+                            group: row['群組名稱'] || "", 
+                            address: row['路燈位置'] || "", 
+                            bulbWatts: row['燈泡瓦數'] || "", 
                             radius: 7 
                         });
                         count++;
@@ -641,16 +799,37 @@
 
     function getProcessType(g_code) {
         if (!g_code || g_code.trim() === "") return "增設";
-        const gw = refDataMap[g_code];
-        if (!gw) return "待確認"; 
-        if (gw.includes("鈉光燈")) return "器變";
-        if (gw.includes("LED")) return "容變";
+        const ref = refDataMap[g_code]; 
+        if (!ref) return "待確認"; 
+        if (ref.w.includes("鈉光燈")) return "器變";
+        if (ref.w.includes("LED")) return "容變";
         return "待確認"; 
+    }
+
+    // V40: Remove decimals for old capacity
+    function getOldCap(g_code) {
+        if (!g_code) return "";
+        const ref = refDataMap[g_code];
+        if (!ref || !ref.va) return "";
+        
+        let val = String(ref.va);
+        // If it contains a decimal point, strip it
+        if (val.indexOf('.') !== -1) {
+            val = val.split('.')[0];
+        }
+        return val;
     }
 
     function createStreetLight(data) {
         if(!data) { err("createStreetLight called with null data", new Error("Null Data")); return null; }
         if(!data.radius) data.radius = 7;
+        
+        if(!data.old_cap) data.old_cap = getOldCap(data.g_code);
+        // Also ensure if it came from CSV directly with decimals, we strip them
+        if (data.old_cap && String(data.old_cap).indexOf('.') !== -1) {
+             data.old_cap = String(data.old_cap).split('.')[0];
+        }
+
         if(!data.processType) data.processType = getProcessType(data.g_code);
 
         const marker = L.marker([data.lat, data.lng], {
@@ -708,6 +887,9 @@
             origLng: center.lng,
             old_cap: "",
             new_cap: "",
+            group: "",
+            address: "",
+            bulbWatts: "",
             radius: 7
         });
         updateFilter(); 
@@ -715,10 +897,11 @@
 
     window.updateFilter = function() {
         const filterVal = document.getElementById('sl-filter').value;
+        
         streetLightsData.forEach(sl => {
             const isVisible = (filterVal === 'all') || (sl.data.processType === filterVal);
             if(isVisible) {
-                if(!map.hasLayer(sl.layers.marker)) {
+                if(!streetLightsLayer.hasLayer(sl.layers.marker)) {
                     streetLightsLayer.addLayer(sl.layers.marker);
                     streetLightsLayer.addLayer(sl.layers.circle);
                     streetLightsLayer.addLayer(sl.layers.textLabel);
@@ -731,10 +914,26 @@
         });
         const visibleCount = streetLightsData.filter(sl => (filterVal === 'all') || (sl.data.processType === filterVal)).length;
         document.getElementById('sl-status').innerText = `✅ 目前顯示: ${visibleCount} 筆 (${filterVal === 'all' ? '全部' : filterVal})`;
+
+        drawnItemsLayer.clearLayers();
+        allDrawings.forEach(d => {
+            const isMatch = (filterVal === 'all') || (d.category === '總是顯示') || (d.category === filterVal);
+            if (isMatch) {
+                drawnItemsLayer.addLayer(d.layer);
+            }
+        });
     };
 
     function generateLabelHtml(name, cap) {
-        const text = name + (cap ? `(${cap})` : "");
+        let displayCap = "";
+        if (cap) {
+            let c = String(cap).trim();
+            if (!c.toUpperCase().endsWith("VA")) {
+                c += "VA";
+            }
+            displayCap = `(${c})`;
+        }
+        const text = name + displayCap;
         return `<div style="color:red;font-size:14px;font-weight:bold;text-shadow:1px 1px 0 #fff;white-space:nowrap;">${text}</div>`;
     }
 
@@ -775,6 +974,9 @@
         const newCode = document.getElementById('edit-gcode').value;
         const newType = getProcessType(newCode);
         document.getElementById('edit-type-display').innerText = newType;
+        
+        const autoOldCap = getOldCap(newCode);
+        if(autoOldCap) document.getElementById('edit-old').value = autoOldCap;
     }
 
     const rSlider = document.getElementById('edit-radius-slider');
@@ -853,50 +1055,127 @@
         }
     };
 
-    window.exportRegistrationSheet = function() {
+    // --- V38: EXPORT EXCEL LOGIC UPGRADE ---
+    window.exportExcelSheet = function() {
         const filterVal = document.getElementById('sl-filter').value;
         const exportData = streetLightsData.filter(sl => (filterVal === 'all') || (sl.data.processType === filterVal));
 
         if(exportData.length === 0) return alert(`目前篩選 (${filterVal}) 無資料可匯出`);
         
-        const csvRows = [];
-        csvRows.push(["序號","變更前電號","變更後電號","行政區","裝設位置或地址","裝設地點座標","路燈編號(新)","變更前燈別","變更前台帳容量","變更前台帳盞數","變更後燈別","變更後容量(VA)","變更後盞數","服務所","受理號碼"]);
+        // --- Sheet 2: Detail List (背面) ---
+        const detailRows = [];
+        detailRows.push(["序號","變更前電號","變更後電號","行政區","裝設位置或地址","裝設地點座標","路燈編號(新)","變更前燈別","變更前台帳容量","變更前台帳盞數","變更後燈別","變更後容量(VA)","變更後盞數","服務所","受理號碼"]);
         
         exportData.forEach((item, index) => {
             const d = item.data;
-            const matchedGW = refDataMap[d.g_code] || ""; 
+            const ref = refDataMap[d.g_code];
+            const matchedGW = ref ? ref.w : ""; 
+            
+            // Fix decimals for excel export
+            let cleanOldCap = d.old_cap || "";
+            if(cleanOldCap && String(cleanOldCap).indexOf('.') !== -1) {
+                cleanOldCap = String(cleanOldCap).split('.')[0];
+            }
 
             const row = [
                 index + 1, 
-                "", "", "", "", 
+                "", "", 
+                d.group || "", 
+                d.address || "", 
                 d.g_code || "", 
                 d.name || "",   
                 matchedGW,          
-                d.old_cap || "", 
+                cleanOldCap, 
                 "1",            
                 "LED",          
                 d.new_cap || "", 
                 "1",            
                 "", ""      
             ];
-            const safeRow = row.map(field => {
-                const s = String(field);
-                if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-                    return `"${s.replace(/"/g, '""')}"`;
-                }
-                return s;
-            });
-            csvRows.push(safeRow.join(","));
+            detailRows.push(row);
         });
 
-        const csvContent = "\uFEFF" + csvRows.join("\n"); 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
+        // --- Sheet 1: Summary (正面) ---
+        const summaryColumns = []; 
+        
+        // 1. Grouping
+        const groups = {}; 
+        
+        exportData.forEach(item => {
+            const d = item.data;
+            const w = d.bulbWatts ? d.bulbWatts + "W" : "";
+            
+            let v = "";
+            if (d.new_cap) {
+                let c = String(d.new_cap).trim();
+                if (!c.toUpperCase().endsWith("VA")) {
+                    c += "VA";
+                }
+                v = "(" + c + ")";
+            }
+
+            const newKey = (w || v) ? (w + v) : "未知";
+            
+            if(!groups[newKey]) groups[newKey] = { total: 0, oldSpecs: {} };
+            groups[newKey].total++;
+            
+            const ref = refDataMap[d.g_code];
+            let rawOld = (ref && ref.va) ? ref.va : (d.old_cap || "");
+            
+            // Clean decimals
+            if(rawOld && String(rawOld).indexOf('.') !== -1) {
+                rawOld = String(rawOld).split('.')[0];
+            }
+
+            let oldKey = "未知";
+            if (rawOld) {
+                const match = String(rawOld).match(/(\d+)/);
+                if (match) {
+                    const val = parseInt(match[1], 10);
+                    const newVal = Math.ceil(val / 0.9);
+                    oldKey = newVal + "VA";
+                } else {
+                    oldKey = rawOld; 
+                }
+            }
+            
+            groups[newKey].oldSpecs[oldKey] = (groups[newKey].oldSpecs[oldKey] || 0) + 1;
+        });
+
+        const headerCol = ["每具容量", "既設數量"];
+        summaryColumns.push(headerCol);
+
+        Object.keys(groups).forEach(key => {
+            const g = groups[key];
+            const col = [];
+            col.push(`${key}+${g.total}`);
+            Object.keys(g.oldSpecs).forEach(oldK => {
+                col.push(`${oldK}-${g.oldSpecs[oldK]}`);
+            });
+            summaryColumns.push(col);
+        });
+
+        let maxDepth = 0;
+        summaryColumns.forEach(c => { if(c.length > maxDepth) maxDepth = c.length; });
+        
+        const summaryRows = [];
+        for(let r=0; r < maxDepth; r++) {
+            const rowData = [];
+            for(let c=0; c < summaryColumns.length; c++) {
+                rowData.push(summaryColumns[c][r] || ""); 
+            }
+            summaryRows.push(rowData);
+        }
+
+        const wb = XLSX.utils.book_new();
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+        const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
+        XLSX.utils.book_append_sheet(wb, wsSummary, "登記單(正面)");
+        XLSX.utils.book_append_sheet(wb, wsDetail, currentPdfName || "統計表");
+
         const typeName = (filterVal === 'all') ? '全案' : filterVal;
-        const fname = getTimestampedName(`${currentPdfName}_${typeName}登記單`, "csv");
-        link.href = URL.createObjectURL(blob);
-        link.download = fname;
-        link.click();
+        const fname = getTimestampedName(`${currentPdfName}_${typeName}登記單`, "xlsx");
+        XLSX.writeFile(wb, fname);
     };
 
     window.setDrawMode = function(mode) {
@@ -904,12 +1183,12 @@
         map.dragging.enable();
         document.querySelectorAll('.draw-tools button').forEach(b => b.classList.remove('active'));
         
-        // Toggle Text Mode UI
-        const textModeContainer = document.getElementById('text-mode-container');
+        const textToolsContainer = document.getElementById('text-tools-container');
+        
         if(mode === 'text') {
-            textModeContainer.style.display = 'block';
+            textToolsContainer.style.display = 'block';
         } else {
-            textModeContainer.style.display = 'none';
+            textToolsContainer.style.display = 'none';
         }
 
         if(mode) {
@@ -918,44 +1197,143 @@
         } else { map.getContainer().style.cursor = ''; }
     };
     
-    window.clearDrawings = function(silent=false) { if(silent || confirm("確定清除?")) drawnItemsLayer.clearLayers(); };
+    window.clearDrawings = function(silent=false) { 
+        if(silent || confirm("確定清除?")) {
+            drawnItemsLayer.clearLayers();
+            allDrawings = [];
+        }
+    };
+    
+    window.removeDrawing = function(id) {
+        const idx = allDrawings.findIndex(d => d.id === id);
+        if (idx > -1) {
+            const item = allDrawings[idx];
+            drawnItemsLayer.removeLayer(item.layer);
+            allDrawings.splice(idx, 1);
+        }
+    }
 
-    function createEditableCircle(latlng, radius, color) {
-        const group = L.layerGroup().addTo(drawnItemsLayer);
-        group.drawType = 'circle'; group.color = color;
+    // V41: Update Category & Color Logic
+    window.updateDrawingCategory = function(id, newCat) {
+        const item = allDrawings.find(d => d.id === id);
+        if(item) {
+            item.category = newCat;
+            updateFilter();
+            if (!drawnItemsLayer.hasLayer(item.layer)) {
+                map.closePopup();
+            }
+        }
+    }
+    
+    window.updateDrawingColor = function(id, newColor) {
+        const item = allDrawings.find(d => d.id === id);
+        if(!item) return;
+        item.color = newColor;
+
+        if(item.type === 'text') {
+            // Update icon html
+            const newHtml = `<div style="color:${newColor};font-size:${item.layer.fontSize}px;font-weight:bold;text-shadow:1px 1px 0 #fff;white-space:nowrap;line-height:20px;">${item.layer.textContent}</div>`;
+            item.layer.setIcon(L.divIcon({ className: 'text-label', html: newHtml, iconSize: [100, 20], iconAnchor: [0, 10] }));
+            item.layer.color = newColor; 
+        } else {
+            // Update Circle/Line style
+            item.layer.color = newColor;
+            item.layer.eachLayer(l => {
+                if(l instanceof L.Circle || l instanceof L.Polyline) {
+                    l.setStyle({ color: newColor });
+                }
+            });
+        }
+    }
+
+    // V44: Helper for Copy Feedback
+    window.copyRefCode = function(element, code) {
+        navigator.clipboard.writeText(code).then(() => {
+            const hintSpan = element.nextElementSibling;
+            if(hintSpan) {
+                const originalText = hintSpan.innerText;
+                const originalColor = hintSpan.style.color;
+                
+                hintSpan.innerText = '(已複製)';
+                hintSpan.style.color = '#4caf50'; // Green
+                
+                setTimeout(() => {
+                    hintSpan.innerText = '(點擊複製)';
+                    hintSpan.style.color = '#666'; // Back to grey
+                }, 1000);
+            }
+        });
+    };
+
+    // V41: Helper to generate popup content with Category & Color Editor
+    function generatePopupContent(id, typeName, currentCat, currentColor) {
+        const categories = ['總是顯示', '器變', '容變', '增設', '待確認'];
+        let opts = categories.map(c => `<option value="${c}" ${c===currentCat?'selected':''}>${c}</option>`).join('');
+        
+        return `
+            <div style="font-size:12px; min-width:140px;">
+                <label style="margin-bottom:4px; display:block;">調整圖層類別:</label>
+                <select onchange="updateDrawingCategory(${id}, this.value)" style="width:100%; margin-bottom:8px; padding:4px;">
+                    ${opts}
+                </select>
+                
+                <label style="margin-bottom:4px; display:block;">調整顏色:</label>
+                <input type="color" value="${currentColor}" onchange="updateDrawingColor(${id}, this.value)" style="width:100%; height:30px; border:none; padding:0; cursor:pointer; margin-bottom:10px;">
+                
+                <button class="delete-btn" style="width:100%; background:#ef5350; color:white; border:none; padding:6px; cursor:pointer; border-radius:4px;" onclick="removeDrawing(${id})">刪除此${typeName}</button>
+            </div>
+        `;
+    }
+
+    function createEditableCircle(latlng, radius, color, category) {
+        const id = Date.now() + Math.random();
+        const group = L.layerGroup(); 
+        group.drawType = 'circle'; group.color = color; group.drawId = id;
+
         const circle = L.circle(latlng, {radius: radius, color: color, weight:2}).addTo(group);
         const handle = L.marker(latlng, {icon:L.divIcon({className:'drag-point-icon', iconSize:[12,12]}), draggable:true}).addTo(group);
         handle.on('drag', evt => { circle.setLatLng(evt.latlng); });
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除此圓</button>';
-        popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(group); };
-        handle.bindPopup(popupContent);
-        return { group, circle, handle };
+        
+        handle.bindPopup(generatePopupContent(id, '圓', category, color));
+
+        const drawingItem = { id, type: 'circle', category, layer: group, color: color };
+        allDrawings.push(drawingItem);
+        drawnItemsLayer.addLayer(group); 
+        return drawingItem;
     }
-    function createEditableLine(latlngs, color) {
-        const group = L.layerGroup().addTo(drawnItemsLayer);
-        group.drawType = 'line'; group.color = color;
+
+    function createEditableLine(latlngs, color, category) {
+        const id = Date.now() + Math.random();
+        const group = L.layerGroup();
+        group.drawType = 'line'; group.color = color; group.drawId = id;
+
         const line = L.polyline(latlngs, {color: color, weight:3}).addTo(group);
         const h1 = L.marker(latlngs[0], {icon:L.divIcon({className:'drag-point-icon', iconSize:[12,12]}), draggable:true}).addTo(group);
         const h2 = L.marker(latlngs[1], {icon:L.divIcon({className:'drag-point-icon', iconSize:[12,12]}), draggable:true}).addTo(group);
         const updateLine = () => { line.setLatLngs([h1.getLatLng(), h2.getLatLng()]); };
         h1.on('drag', updateLine); h2.on('drag', updateLine);
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除此線</button>';
-        popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(group); };
-        line.bindPopup(popupContent);
-        return { group, line };
+        
+        line.bindPopup(generatePopupContent(id, '線', category, color));
+
+        const drawingItem = { id, type: 'line', category, layer: group, color: color };
+        allDrawings.push(drawingItem);
+        drawnItemsLayer.addLayer(group);
+        return drawingItem;
     }
-    function createEditableText(latlng, text, fontSize, color) {
+
+    function createEditableText(latlng, text, fontSize, color, category) {
+        const id = Date.now() + Math.random();
         const marker = L.marker(latlng, {
             icon: L.divIcon({ className: 'text-label', html: `<div style="color:${color};font-size:${fontSize}px;font-weight:bold;text-shadow:1px 1px 0 #fff;white-space:nowrap;line-height:20px;">${text}</div>`, iconSize: [100, 20], iconAnchor: [0, 10] }),
             interactive: true, draggable: true
-        }).addTo(drawnItemsLayer);
-        marker.drawType = 'text'; marker.textContent = text; marker.fontSize = fontSize; marker.color = color;
-        const popupContent = document.createElement('div');
-        popupContent.innerHTML = '<button class="delete-btn" style="background:#ef5350; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">刪除文字</button>';
-        popupContent.querySelector('button').onclick = () => { drawnItemsLayer.removeLayer(marker); };
-        marker.bindPopup(popupContent);
+        });
+        marker.drawType = 'text'; marker.textContent = text; marker.fontSize = fontSize; marker.color = color; marker.drawId = id;
+        
+        marker.bindPopup(generatePopupContent(id, '文字', category, color));
+        
+        const drawingItem = { id, type: 'text', category, layer: marker, color: color };
+        allDrawings.push(drawingItem);
+        drawnItemsLayer.addLayer(marker);
         return marker;
     }
 
@@ -968,9 +1346,9 @@
         else if(currentDrawMode === 'line') tempDrawShape = L.polyline([startPoint, startPoint], {color:color, weight:3}).addTo(map);
         else if(currentDrawMode === 'text') {
             const textMode = document.getElementById('text-mode-select').value;
+            const category = document.getElementById('draw-category-select').value; 
             let text = "";
             
-            // V36: Updated text for preset
             if (textMode === 'preset_double') {
                 text = "雙臂燈"; 
             } else {
@@ -979,8 +1357,10 @@
 
             if(text) { 
                 const fs = document.getElementById('input-font-size').value || 16; 
-                createEditableText(startPoint, text, fs, color); 
+                createEditableText(startPoint, text, fs, color, category); 
             }
+            
+            setDrawMode(null);
         }
     });
     map.on('mousemove', function(e) {
@@ -991,9 +1371,19 @@
     map.on('mouseup', function(e) {
         if(!currentDrawMode || !startPoint) return;
         const color = document.getElementById('input-color').value;
+        const category = document.getElementById('draw-category-select').value;
+
         if(tempDrawShape) {
-            if(currentDrawMode === 'circle') { const r = tempDrawShape.getRadius(); map.removeLayer(tempDrawShape); createEditableCircle(startPoint, r, color); }
-            else if (currentDrawMode === 'line') { const lls = tempDrawShape.getLatLngs(); map.removeLayer(tempDrawShape); createEditableLine(lls, color); }
+            if(currentDrawMode === 'circle') { 
+                const r = tempDrawShape.getRadius(); 
+                map.removeLayer(tempDrawShape); 
+                createEditableCircle(startPoint, r, color, category); 
+            }
+            else if (currentDrawMode === 'line') { 
+                const lls = tempDrawShape.getLatLngs(); 
+                map.removeLayer(tempDrawShape); 
+                createEditableLine(lls, color, category); 
+            }
         }
         startPoint = null; tempDrawShape = null; 
         
@@ -1017,24 +1407,40 @@
                     const lat = parseFloat(row['G-y']), lng = parseFloat(row['G-x']);
                     if (!isNaN(lat) && !isNaN(lng)) {
                         if(row['G-code']) {
-                            refDataMap[row['G-code']] = row['G-W'] || "";
+                            refDataMap[row['G-code']] = {
+                                w: row['G-W'] || "",
+                                va: row['G-VA'] || ""
+                            };
                         }
-                        const refItem = { lat, lng, code: row['G-code'], w: row['G-W'] };
+                        const refItem = { lat, lng, code: row['G-code'], w: row['G-W'], va: row['G-VA'] };
                         refMarkersData.push(refItem);
 
+                        // V41: Fix Decimal Display in Popup
+                        let displayVa = row['G-VA'] || "";
+                        if (displayVa && String(displayVa).indexOf('.') !== -1) {
+                            displayVa = String(displayVa).split('.')[0];
+                        }
+
+                        // V44: Use copyRefCode helper and remove alert
                         const popupHtml = `
                             <div style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                                <b style="cursor:pointer; color:#2980b9; text-decoration:underline;" 
+                                <b style="cursor:pointer; color:#ffb703; text-decoration:underline;" 
                                    title="點擊複製" 
-                                   onclick="navigator.clipboard.writeText('${row['G-code']}').then(()=>alert('已複製: ${row['G-code']}'))">
+                                   onclick="copyRefCode(this, '${row['G-code']}')">
                                    ${row['G-code']}
                                 </b>
                                 <span style="font-size:12px; color:#666;">(點擊複製)</span>
                             </div>
-                            <div style="margin-top:4px;">${row['G-W']||''}</div>
+                            <div style="margin-top:4px;">${row['G-W']||''} ${displayVa ? '('+displayVa+')' : ''}</div>
                         `;
+                        
+                        // [V43] Tooltip for Hover Preview
+                        const tooltipContent = `<div style='font-size:13px;'><b>${row['G-code']}</b><br>${row['G-W']||''} ${displayVa ? '('+displayVa+')' : ''}</div>`;
+
                         L.circleMarker([lat, lng], { color: 'green', fillColor: '#90EE90', fillOpacity: 0.8, radius: 5 })
-                         .bindPopup(popupHtml).addTo(refMarkersLayer);
+                         .bindPopup(popupHtml)
+                         .bindTooltip(tooltipContent, { direction: 'top', offset: [0, -5], opacity: 0.9 })
+                         .addTo(refMarkersLayer);
                         count++;
                     }
                 });
@@ -1046,6 +1452,9 @@
                         sl.data.processType = getProcessType(sl.data.g_code);
                         sl.layers.marker.setTooltipContent(`<b>${sl.data.name}</b><br>${sl.data.g_code}<br><small>[${sl.data.processType}]</small>`);
                     }
+                    if(!sl.data.old_cap) {
+                        sl.data.old_cap = getOldCap(sl.data.g_code);
+                    }
                 });
                 window.updateFilter();
             }
@@ -1053,7 +1462,6 @@
     });
     window.clearRefMarkers = function() { refMarkersLayer.clearLayers(); refDataMap = {}; refMarkersData = []; };
     
-    // --- EXPORT PDF ---
     window.exportPDF = async function() {
         if (!pdfDocBytes || !pdfOverlay) return alert("請先上傳 PDF");
         try {
@@ -1071,7 +1479,6 @@
             const { width, height } = page.getSize();
             const rotation = (page.getRotation().angle || 0) % 360; 
 
-            // 視覺寬高 (Visual Width/Height)
             let visW = width, visH = height;
             if (rotation === 90 || rotation === 270) {
                 visW = height;
@@ -1117,10 +1524,10 @@
 
             const currentFilter = document.getElementById('sl-filter').value;
 
+            // Export Street Lights (Filtered)
             for (const sl of streetLightsData) {
                 if(currentFilter !== 'all' && sl.data.processType !== currentFilter) continue;
 
-                // A. 繪製圓圈 (Draw Circle)
                 const lat = sl.layers.circle.getLatLng().lat;
                 const lng = sl.layers.circle.getLatLng().lng;
                 const vCirclePt = toVisualPoint(lat, lng);
@@ -1138,11 +1545,16 @@
                     borderWidth: 2 
                 });
 
-                // B. 繪製文字 (Draw Text)
-                const labelText = sl.data.name + (sl.data.new_cap ? `(${sl.data.new_cap})` : "");
+                let pdfCap = "";
+                if (sl.data.new_cap) {
+                    let c = String(sl.data.new_cap).trim();
+                    if (!c.toUpperCase().endsWith("VA")) c += "VA";
+                    pdfCap = `(${c})`;
+                }
+                const pdfLabelText = sl.data.name + pdfCap;
                 
-                if(labelText.trim()) {
-                    const pngBytes = await textToImageBytes(labelText, 14, '#ff0000');
+                if(pdfLabelText.trim()) {
+                    const pngBytes = await textToImageBytes(pdfLabelText, 14, '#ff0000');
                     const pngImage = await pdfDoc.embedPng(pngBytes);
                     const dims = pngImage.scale(0.25);
 
@@ -1165,6 +1577,8 @@
                 }
             }
 
+            // V39: Export Drawings (Filtered by drawnItemsLayer visibility)
+            // drawnItemsLayer only contains items that match the filter, so we can iterate it directly.
             drawnItemsLayer.eachLayer(layer => {
                 if (layer.drawType === 'circle') {
                     let circleLayer; layer.eachLayer(l => { if(l instanceof L.Circle) circleLayer = l; });
@@ -1227,18 +1641,23 @@
     window.saveProject = function() {
         if(!pdfOverlay) return;
         const b = pdfOverlay.getBounds();
-        const drawings = [];
-        drawnItemsLayer.eachLayer(layer => {
-            if(layer.drawType === 'circle') {
-                let c; layer.eachLayer(l => { if(l instanceof L.Circle) c = l; });
-                if(c) drawings.push({ type: 'circle', lat: c.getLatLng().lat, lng: c.getLatLng().lng, radius: c.getRadius(), color: layer.color });
-            } else if(layer.drawType === 'line') {
-                let l; layer.eachLayer(line => { if(line instanceof L.Polyline) l = line; });
-                if(l) drawings.push({ type: 'line', latlngs: l.getLatLngs(), color: layer.color });
-            } else if(layer.drawType === 'text') {
-                drawings.push({ type: 'text', lat: layer.getLatLng().lat, lng: layer.getLatLng().lng, content: layer.textContent, fontSize: layer.fontSize, color: layer.color });
+        
+        // V39: Save from allDrawings array to preserve hidden items and categories
+        const drawings = allDrawings.map(item => {
+            const l = item.layer;
+            if(item.type === 'circle') {
+                let c; l.eachLayer(layer => { if(layer instanceof L.Circle) c = layer; }); // Fixed
+                if (!c) return null;
+                return { type: 'circle', lat: c.getLatLng().lat, lng: c.getLatLng().lng, radius: c.getRadius(), color: l.color, category: item.category };
+            } else if (item.type === 'line') {
+                let poly; l.eachLayer(layer => { if(layer instanceof L.Polyline) poly = layer; }); // Fixed
+                if (!poly) return null;
+                return { type: 'line', latlngs: poly.getLatLngs(), color: l.color, category: item.category };
+            } else if (item.type === 'text') {
+                return { type: 'text', lat: l.getLatLng().lat, lng: l.getLatLng().lng, content: l.textContent, fontSize: l.fontSize, color: l.color, category: item.category };
             }
-        });
+            return null;
+        }).filter(x => x);
         
         const sls = streetLightsData.map(sl => {
             return {
@@ -1252,7 +1671,6 @@
 
         const data = {
             bounds: { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() },
-            // V23 Final: Remove legacy markers save
             drawings: drawings,
             streetLights: sls,
             refMarkers: refMarkersData
@@ -1312,21 +1730,39 @@
                             }
 
                             const lat = row.lat, lng = row.lng;
-                            if(row.code) refDataMap[row.code] = row.w || "";
+                            if(row.code) {
+                                refDataMap[row.code] = {
+                                    w: row.w || "",
+                                    va: row.va || ""
+                                };
+                            }
                             
+                            // V41: Fix Decimal Display in Popup (Restoration)
+                            let displayVa = row.va || "";
+                            if (displayVa && String(displayVa).indexOf('.') !== -1) {
+                                displayVa = String(displayVa).split('.')[0];
+                            }
+                            
+                            // V44: Use copyRefCode helper and remove alert
                             const popupHtml = `
                                 <div style="font-size:14px; display:flex; align-items:center; gap:8px;">
-                                    <b style="cursor:pointer; color:#2980b9; text-decoration:underline;" 
+                                    <b style="cursor:pointer; color:#ffb703; text-decoration:underline;" 
                                        title="點擊複製" 
-                                       onclick="navigator.clipboard.writeText('${row.code}').then(()=>alert('已複製: ${row.code}'))">
+                                       onclick="copyRefCode(this, '${row.code}')">
                                        ${row.code}
                                     </b>
                                     <span style="font-size:12px; color:#666;">(點擊複製)</span>
                                 </div>
-                                <div style="margin-top:4px;">${row.w||''}</div>
+                                <div style="margin-top:4px;">${row.w||''} ${displayVa ? '('+displayVa+')' : ''}</div>
                             `;
+                            
+                            // [V43] Tooltip Restoration
+                            const tooltipContent = `<div style='font-size:13px;'><b>${row.code}</b><br>${row.w||''} ${displayVa ? '('+displayVa+')' : ''}</div>`;
+
                             L.circleMarker([lat, lng], { color: 'green', fillColor: '#90EE90', fillOpacity: 0.8, radius: 5 })
-                         .bindPopup(popupHtml).addTo(refMarkersLayer);
+                         .bindPopup(popupHtml)
+                         .bindTooltip(tooltipContent, { direction: 'top', offset: [0, -5], opacity: 0.9 })
+                         .addTo(refMarkersLayer);
                             count++;
                         } catch(ex) { err(`Error restoring RefMarker ${idx}`, ex); }
                     });
@@ -1340,11 +1776,11 @@
                     d.drawings.forEach((item, idx) => {
                         try {
                             if (!item) return;
-
                             const color = item.color || '#ff0000';
-                            if(item.type === 'circle') createEditableCircle([item.lat, item.lng], item.radius, color);
-                            else if(item.type === 'line') createEditableLine(item.latlngs, color);
-                            else if(item.type === 'text') createEditableText([item.lat, item.lng], item.content, item.fontSize, color);
+                            const cat = item.category || '總是顯示'; 
+                            if(item.type === 'circle') createEditableCircle([item.lat, item.lng], item.radius, color, cat);
+                            else if(item.type === 'line') createEditableLine(item.latlngs, color, cat);
+                            else if(item.type === 'text') createEditableText([item.lat, item.lng], item.content, item.fontSize, color, cat);
                         } catch(ex) { err(`Error restoring Drawing ${idx}`, ex); }
                     });
                 }
@@ -1353,31 +1789,16 @@
                     log(`Restoring ${d.streetLights.length} StreetLights...`);
                     d.streetLights.forEach((item, idx) => {
                         try {
-                            if (!item) {
-                                log(`StreetLight at index ${idx} is NULL or Undefined. Skipping.`);
-                                return;
-                            }
-                            if (!item.data) {
-                                log(`StreetLight at index ${idx} missing 'data' property. Item: ${JSON.stringify(item)}`);
-                                return;
-                            }
-
+                            if (!item || !item.data) return;
                             const slObj = createStreetLight(item.data); 
-                            
-                            if (!slObj) {
-                                log(`Failed to create StreetLight object at index ${idx}.`);
-                                return;
-                            }
+                            if (!slObj) return;
 
                             if (typeof item.lat === 'number' && typeof item.lng === 'number') {
                                 const newPt = L.latLng(item.lat, item.lng);
                                 slObj.layers.marker.setLatLng(newPt);
                                 slObj.layers.circle.setLatLng(newPt);
-                            } else {
-                                log(`StreetLight index ${idx} has invalid lat/lng in root object: ${item.lat}, ${item.lng}`);
                             }
-                            
-                            if (typeof item.textLat === 'number' && typeof item.textLng === 'number') {
+                            if (typeof item.textLat === 'number') {
                                 slObj.layers.textLabel.setLatLng([item.textLat, item.textLng]);
                             }
 
@@ -1386,10 +1807,8 @@
                                 className: 'text-label', html: newHtml, iconSize: [150, 20], 
                                 iconAnchor: [-45, 10] 
                             }));
-
                         } catch(ex) { err(`Critical Error restoring StreetLight ${idx}`, ex); }
                     });
-
                     document.getElementById('sl-status').innerText = `✅ 已還原 ${d.streetLights.length} 筆路燈`;
                     try { window.updateFilter(); } catch(e) { err("Filter update failed", e); }
                 }
