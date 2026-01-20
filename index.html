@@ -14,7 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 
     <style>
-        /* V44.1 Theme */
+        /* V44.5 Theme (Same as previous) */
         :root {
             --bg-sidebar: #333333;
             --bg-card: #001219;
@@ -22,7 +22,7 @@
             --text-sub: #b0bec5;
             --accent-orange: #ffb703; /* 主題黃色 */
             --btn-primary: #ffb703;
-            --btn-hover: #ffca28;     /*稍微亮一點的黃色作為Hover*/
+            --btn-hover: #ffca28;
             --input-bg: #ffffff;
             --input-text: #455a64;
             --danger: #ef5350;
@@ -38,19 +38,10 @@
             overflow: hidden; background: #e0e0e0;
         }
 
-        /* 全域一致性修正：強制所有瀏覽器元件使用主題色 */
-        input[type="range"], 
-        input[type="checkbox"], 
-        input[type="radio"] {
-            accent-color: var(--accent-orange);
-            cursor: pointer;
+        input[type="range"], input[type="checkbox"], input[type="radio"] {
+            accent-color: var(--accent-orange); cursor: pointer;
         }
-
-        /* 全域一致性修正：反白文字時的顏色 */
-        ::selection {
-            background: var(--accent-orange);
-            color: #001219;
-        }
+        ::selection { background: var(--accent-orange); color: #001219; }
         
         .sidebar { 
             width: 300px; 
@@ -67,10 +58,7 @@
         .sidebar.collapsed { transform: translateX(-300px); margin-right: -300px; }
         
         .sidebar-scroll-area {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            overflow-x: hidden;
+            flex: 1; overflow-y: auto; padding: 20px; overflow-x: hidden;
         }
         .sidebar-scroll-area::-webkit-scrollbar { width: 8px; }
         .sidebar-scroll-area::-webkit-scrollbar-track { background: var(--bg-sidebar); }
@@ -96,8 +84,7 @@
         .toggle-btn:hover { background: var(--bg-card); color: #fff; }
 
         .section { 
-            margin-bottom: 16px; 
-            padding: 15px; 
+            margin-bottom: 16px; padding: 15px; 
             background: var(--bg-card); 
             border-radius: var(--radius);
             border: 1px solid rgba(255,255,255,0.05);
@@ -136,17 +123,11 @@
         button.outline { background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub); font-weight: normal; }
         button.outline:hover { border-color: var(--text-main); color: var(--text-main); background: rgba(255,255,255,0.05); }
 
-        /* Layer Visibility Toggle Button Style */
         .layer-toggle-btn {
-            position: absolute;
-            top: 10px; right: 10px;
-            width: 30px; height: 30px;
-            padding: 0; margin: 0;
-            background: transparent; border: none;
-            color: var(--text-main); font-size: 18px;
-            cursor: pointer; z-index: 10;
-            display: flex; align-items: center; justify-content: center;
-            transition: opacity 0.2s;
+            position: absolute; top: 10px; right: 10px; width: 30px; height: 30px;
+            padding: 0; margin: 0; background: transparent; border: none;
+            color: var(--text-main); font-size: 18px; cursor: pointer; z-index: 10;
+            display: flex; align-items: center; justify-content: center; transition: opacity 0.2s;
         }
         .layer-toggle-btn:hover { background: rgba(255, 255, 255, 0.1); border-radius: 50%; }
         .layer-toggle-btn.off { opacity: 0.6; }
@@ -179,13 +160,11 @@
 
         #map { flex: 1; height: 100%; z-index: 0; cursor: crosshair; background: #cfd8dc; }
         
-        /* Handles for 4 corners */
         .handle-icon { background: rgba(255, 255, 255, 0.9); border: 1px solid #000; border-radius: 0; cursor: pointer; }
         .cursor-nw { cursor: nw-resize; }
         .cursor-ne { cursor: ne-resize; }
         .cursor-sw { cursor: sw-resize; }
         .cursor-se { cursor: se-resize; }
-        
         .move-handle-icon { background: var(--accent-orange); border: 2px solid #fff; border-radius: 4px; color: #000; text-align: center; font-size: 16px; line-height: 18px; cursor: move; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .drag-point-icon { background: var(--btn-hover); border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.4); cursor: move; }
 
@@ -211,7 +190,102 @@
         .close-panel-btn { background: transparent; border: none; color: var(--text-sub); cursor: pointer; font-size: 18px; width: auto; margin:0; padding:0; }
         .close-panel-btn:hover { color: white; }
 
-        /* Dark Theme for Leaflet Popups */
+        /* Stats Dashboard Style - V44.11 Extremely Flat & Aligned */
+        #stats-dashboard {
+            position: absolute; 
+            bottom: 0;       
+            right: 0;        
+            top: auto;       
+            
+            /* 背景不透明深灰 */
+            background: #333333;
+            
+            border: 1px solid var(--accent-orange);
+            border-right: none; 
+            border-bottom: none; 
+            border-radius: 4px 0 0 0;
+            
+            /* V44.11: 移除容器 Padding，完全由內容撐開 */
+            padding: 0;
+            
+            z-index: 1000;
+            color: var(--text-main);
+            box-shadow: -4px -4px 15px rgba(0,0,0,0.3);
+            
+            display: flex;
+            flex-direction: row; 
+            gap: 0; /* 無間距 */
+            
+            /* V44.11: 關鍵！讓所有子項目高度自動拉伸一致 */
+            align-items: stretch;
+            
+            /* 隱藏溢出以配合圓角 */
+            overflow: hidden; 
+            
+            font-size: 13px;
+            transition: transform 0.3s ease; 
+            transform: translateX(0);
+        }
+
+        #stats-dashboard.collapsed {
+            /* 保留按鈕寬度 */
+            transform: translateX(calc(100% - 32px)); 
+        }
+
+        /* V44.11: 收合按鈕改為標準 Flex 項目，不再絕對定位 */
+        .dashboard-toggle-btn {
+            position: static; 
+            width: 32px;      /* 稍微窄一點更緊湊 */
+            margin: 0;
+            padding: 0;
+            
+            /* 視覺風格模仿 .stat-item */
+            background: transparent; 
+            border: none;
+            color: var(--accent-orange);
+            cursor: pointer;
+            
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px; /* 微調大小以匹配高度 */
+        }
+        
+        .dashboard-toggle-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff; 
+        }
+
+        .stat-item { 
+            display: flex; 
+            align-items: center; 
+            gap: 6px;
+            /* V44.11: 上下 3px (約字高一半) */
+            padding: 3px 10px;
+            cursor: pointer; 
+            border: none; /* V44.11: 移除所有邊框襯線 */
+            transition: all 0.2s ease;
+        }
+        .stat-item:hover { background: rgba(255, 255, 255, 0.1); }
+        
+        /* Active State */
+        .stat-item.active {
+            background: var(--accent-orange); 
+            color: #001219; 
+            border-color: var(--accent-orange);
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .stat-item.active .stat-label, 
+        .stat-item.active .stat-value {
+            color: #001219 !important; 
+        }
+        
+        .stat-label { font-weight: bold; white-space: nowrap; transition: color 0.2s; }
+        .stat-value { font-family: monospace; font-size: 14px; color: var(--text-sub); margin-left: 2px; transition: color 0.2s; }
+
+        /* Leaflet Overrides */
         .leaflet-popup-content-wrapper, .leaflet-popup-tip {
             background: var(--bg-sidebar);
             color: var(--text-main);
@@ -219,36 +293,16 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.5);
             border-radius: var(--radius);
         }
-        .leaflet-popup-content {
-            margin: 13px 15px;
-            line-height: 1.4;
+        .leaflet-popup-content { margin: 13px 15px; line-height: 1.4; }
+        .leaflet-container a.leaflet-popup-close-button { color: var(--text-sub); padding: 8px; }
+        .leaflet-container a.leaflet-popup-close-button:hover { color: var(--accent-orange); }
+        .leaflet-popup-content select, .leaflet-popup-content input[type="color"] {
+            background: #fff; color: #000; border: 1px solid var(--border-color); border-radius: var(--radius);
         }
-        .leaflet-container a.leaflet-popup-close-button {
-            color: var(--text-sub);
-            padding: 8px;
-        }
-        .leaflet-container a.leaflet-popup-close-button:hover {
-            color: var(--accent-orange);
-        }
-        /* Style for inputs inside popup */
-        .leaflet-popup-content select, 
-        .leaflet-popup-content input[type="color"] {
-            background: #fff;
-            color: #000;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-        }
-        .leaflet-popup-content label {
-            color: var(--accent-orange);
-            font-weight: bold;
-            font-size: 12px;
-        }
-        /* Tooltip Style Override */
+        .leaflet-popup-content label { color: var(--accent-orange); font-weight: bold; font-size: 12px; }
         .leaflet-tooltip {
-            background: var(--bg-sidebar);
-            border: 1px solid var(--accent-orange);
-            color: var(--text-main);
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            background: var(--bg-sidebar); border: 1px solid var(--accent-orange);
+            color: var(--text-main); box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
         }
         .leaflet-tooltip-top:before { border-top-color: var(--accent-orange); }
         .leaflet-tooltip-bottom:before { border-bottom-color: var(--accent-orange); }
@@ -257,6 +311,26 @@
     </style>
 </head>
 <body>
+
+<div id="stats-dashboard">
+    <button class="dashboard-toggle-btn" onclick="toggleDashboard()" title="收合/展開儀表板">📊</button>
+
+    <div class="stat-item active" id="hud-btn-all" onclick="setFilter('all')">
+        <span class="stat-label">👁️ 全部</span><span class="stat-value" id="stat-all">0</span>
+    </div>
+    <div class="stat-item" id="hud-btn-type1" onclick="setFilter('器變')">
+        <span class="stat-label">🔧 器變</span><span class="stat-value" id="stat-type1">0</span>
+    </div>
+    <div class="stat-item" id="hud-btn-type2" onclick="setFilter('容變')">
+        <span class="stat-label">💡 容變</span><span class="stat-value" id="stat-type2">0</span>
+    </div>
+    <div class="stat-item" id="hud-btn-type3" onclick="setFilter('增設')">
+        <span class="stat-label">➕ 增設</span><span class="stat-value" id="stat-type3">0</span>
+    </div>
+    <div class="stat-item" id="hud-btn-type4" onclick="setFilter('待確認')">
+        <span class="stat-label">❓ 待確認</span><span class="stat-value" id="stat-type4">0</span>
+    </div>
+</div>
 
 <div class="sidebar" id="sidebar">
     <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
@@ -422,6 +496,8 @@
             <button id="btn-panel-save" class="primary" style="margin:0;">確認更新</button>
             <button id="btn-panel-reset" class="outline" style="margin:0;">恢復位置</button>
         </div>
+        
+        <button id="btn-panel-delete" class="danger" style="margin-top:10px; display:none;">🗑️ 刪除此路燈</button>
     </div>
 </div>
 
@@ -513,6 +589,11 @@
     window.toggleSidebar = function() {
         document.getElementById('sidebar').classList.toggle('collapsed');
         setTimeout(() => { map.invalidateSize(); }, 300);
+    };
+
+    // --- Dashboard Toggle Logic (V44.7) ---
+    window.toggleDashboard = function() {
+        document.getElementById('stats-dashboard').classList.toggle('collapsed');
     };
 
     // --- Toggle Functions ---
@@ -785,7 +866,8 @@
                             group: row['群組名稱'] || "", 
                             address: row['路燈位置'] || "", 
                             bulbWatts: row['燈泡瓦數'] || "", 
-                            radius: 7 
+                            radius: 7,
+                            isManual: false // CSV Imported
                         });
                         count++;
                     }
@@ -806,14 +888,11 @@
         return "待確認"; 
     }
 
-    // V40: Remove decimals for old capacity
     function getOldCap(g_code) {
         if (!g_code) return "";
         const ref = refDataMap[g_code];
         if (!ref || !ref.va) return "";
-        
         let val = String(ref.va);
-        // If it contains a decimal point, strip it
         if (val.indexOf('.') !== -1) {
             val = val.split('.')[0];
         }
@@ -825,12 +904,14 @@
         if(!data.radius) data.radius = 7;
         
         if(!data.old_cap) data.old_cap = getOldCap(data.g_code);
-        // Also ensure if it came from CSV directly with decimals, we strip them
         if (data.old_cap && String(data.old_cap).indexOf('.') !== -1) {
              data.old_cap = String(data.old_cap).split('.')[0];
         }
 
         if(!data.processType) data.processType = getProcessType(data.g_code);
+
+        // Explicitly set isManual if not present (default to false for robustness)
+        if(typeof data.isManual === 'undefined') data.isManual = false;
 
         const marker = L.marker([data.lat, data.lng], {
             icon: L.divIcon({className:'drag-point-icon', iconSize:[12,12], bgPos:[0,0]}), 
@@ -890,9 +971,36 @@
             group: "",
             address: "",
             bulbWatts: "",
-            radius: 7
+            radius: 7,
+            isManual: true // V44.3: 標記為手動新增
         });
         updateFilter(); 
+    };
+
+    // V44.3 Stats Updater
+    function updateStatsDashboard() {
+        const counts = { all: 0, type1: 0, type2: 0, type3: 0, type4: 0 };
+        
+        streetLightsData.forEach(sl => {
+            counts.all++;
+            const t = sl.data.processType;
+            if(t === '器變') counts.type1++;
+            else if(t === '容變') counts.type2++;
+            else if(t === '增設') counts.type3++;
+            else if(t === '待確認') counts.type4++;
+        });
+
+        document.getElementById('stat-all').innerText = counts.all;
+        document.getElementById('stat-type1').innerText = counts.type1;
+        document.getElementById('stat-type2').innerText = counts.type2;
+        document.getElementById('stat-type3').innerText = counts.type3;
+        document.getElementById('stat-type4').innerText = counts.type4;
+    }
+    
+    // V44.4 Sync Function
+    window.setFilter = function(val) {
+        document.getElementById('sl-filter').value = val;
+        updateFilter();
     };
 
     window.updateFilter = function() {
@@ -922,6 +1030,16 @@
                 drawnItemsLayer.addLayer(d.layer);
             }
         });
+
+        updateStatsDashboard(); // Update counts
+        
+        // V44.4: Sync Visual Active State in HUD
+        document.querySelectorAll('.stat-item').forEach(el => el.classList.remove('active'));
+        if(filterVal === 'all') document.getElementById('hud-btn-all').classList.add('active');
+        else if(filterVal === '器變') document.getElementById('hud-btn-type1').classList.add('active');
+        else if(filterVal === '容變') document.getElementById('hud-btn-type2').classList.add('active');
+        else if(filterVal === '增設') document.getElementById('hud-btn-type3').classList.add('active');
+        else if(filterVal === '待確認') document.getElementById('hud-btn-type4').classList.add('active');
     };
 
     function generateLabelHtml(name, cap) {
@@ -949,6 +1067,14 @@
         const r = slObj.data.radius || 7;
         document.getElementById('edit-radius-slider').value = r;
         document.getElementById('edit-radius-input').value = r;
+
+        // V44.3: Toggle Delete Button Visibility
+        const delBtn = document.getElementById('btn-panel-delete');
+        if (slObj.data.isManual) {
+            delBtn.style.display = 'block';
+        } else {
+            delBtn.style.display = 'none';
+        }
 
         slObj.layers.textLabel.dragging.enable();
         slObj.layers.textLabel.getElement().style.cursor = 'move';
@@ -1029,6 +1155,27 @@
         closeEditPanel();
     };
 
+    // V44.3 Manual Delete Logic
+    document.getElementById('btn-panel-delete').onclick = function() {
+        if (!currentEditingSL) return;
+        if (!currentEditingSL.data.isManual) return alert("無法刪除由 CSV 匯入的資料");
+        
+        if (confirm(`確定要刪除 ${currentEditingSL.data.name} 嗎？此動作無法復原。`)) {
+            // Remove layers
+            streetLightsLayer.removeLayer(currentEditingSL.layers.marker);
+            streetLightsLayer.removeLayer(currentEditingSL.layers.circle);
+            streetLightsLayer.removeLayer(currentEditingSL.layers.textLabel);
+            
+            // Remove from data array
+            streetLightsData = streetLightsData.filter(sl => sl.id !== currentEditingSL.id);
+            
+            // Cleanup UI
+            currentEditingSL = null; // Prevent closeEditPanel from trying to modify a deleted obj
+            editPanel.style.display = 'none';
+            updateFilter();
+        }
+    };
+
     let isPanelDragging = false;
     let panelOffsetX, panelOffsetY;
     panelHeader.addEventListener('mousedown', (e) => {
@@ -1045,13 +1192,17 @@
     });
     document.addEventListener('mouseup', () => { isPanelDragging = false; document.body.style.userSelect = ''; });
 
+    // V44.5 Fixed Logic: Close panel before clearing layers
     window.clearStreetLights = function(force = false) {
         if(force || confirm("清除所有路燈資料?")) {
+            closeEditPanel(); // Move to top to prevent error
+            
             streetLightsLayer.clearLayers();
             streetLightsData = [];
             document.getElementById('sl-status').innerText = "";
             document.getElementById('sl-csv-input').value = ""; 
-            closeEditPanel();
+            
+            updateStatsDashboard(); // Clear stats
         }
     };
 
@@ -1472,7 +1623,14 @@
             const typeName = (filterVal === 'all') ? '全案' : filterVal;
             const finalFileName = getTimestampedName(`${currentPdfName}_${typeName}`, "pdf");
             
-            pdfDoc.setTitle(finalFileName);
+            pdfDoc.setTitle(finalFileName); // 標題 = 檔名
+            pdfDoc.setAuthor('Delta_Zorua'); // 作者
+            pdfDoc.setSubject('台電用電變更'); // 主旨
+            pdfDoc.setKeywords(['台電', '路燈']); // 關鍵字
+            pdfDoc.setProducer('Taieasy'); // PDF 製作程式
+            pdfDoc.setCreator('Taieasy'); // 建立者 (應用程式)
+            pdfDoc.setCreationDate(new Date()); // 建立日期
+            pdfDoc.setModificationDate(new Date()); // 修改日期
 
             const page = pdfDoc.getPages()[0];
             
@@ -1646,11 +1804,11 @@
         const drawings = allDrawings.map(item => {
             const l = item.layer;
             if(item.type === 'circle') {
-                let c; l.eachLayer(layer => { if(layer instanceof L.Circle) c = layer; }); // Fixed
+                let c; l.eachLayer(layer => { if(layer instanceof L.Circle) c = layer; }); // V44.2 Fixed
                 if (!c) return null;
                 return { type: 'circle', lat: c.getLatLng().lat, lng: c.getLatLng().lng, radius: c.getRadius(), color: l.color, category: item.category };
             } else if (item.type === 'line') {
-                let poly; l.eachLayer(layer => { if(layer instanceof L.Polyline) poly = layer; }); // Fixed
+                let poly; l.eachLayer(layer => { if(layer instanceof L.Polyline) poly = layer; }); // V44.2 Fixed
                 if (!poly) return null;
                 return { type: 'line', latlngs: poly.getLatLngs(), color: l.color, category: item.category };
             } else if (item.type === 'text') {
@@ -1743,7 +1901,7 @@
                                 displayVa = String(displayVa).split('.')[0];
                             }
                             
-                            // V44: Use copyRefCode helper and remove alert
+                            // V44: Use copyRefCode helper
                             const popupHtml = `
                                 <div style="font-size:14px; display:flex; align-items:center; gap:8px;">
                                     <b style="cursor:pointer; color:#ffb703; text-decoration:underline;" 
