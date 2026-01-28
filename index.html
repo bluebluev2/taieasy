@@ -451,6 +451,11 @@
         </div>
 
         <div class="section" style="border:none; box-shadow:none; padding:0; background:transparent;">
+            <div style="margin-bottom: 8px; display:flex; align-items:center;">
+                <input type="checkbox" id="chk-export-circles" checked style="width:auto; margin-right:5px;">
+                <label for="chk-export-circles" style="margin:0; cursor:pointer; font-weight:normal; color:var(--text-main);">PDF 顯示路燈紅圈</label>
+            </div>
+
             <button class="primary" onclick="exportPDF()" style="padding:12px; font-size:14px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">💾 匯出圖層 PDF (含篩選)</button>
             <div class="row">
                 <button class="outline" onclick="saveProject()">📂 儲存專案</button>
@@ -1620,17 +1625,20 @@
             const pdfDoc = await PDFDocument.load(pdfDocBytes);
             
             const filterVal = document.getElementById('sl-filter').value;
+            // CHECK THE CHECKBOX STATE
+            const showCircles = document.getElementById('chk-export-circles').checked;
+
             const typeName = (filterVal === 'all') ? '全案' : filterVal;
             const finalFileName = getTimestampedName(`${currentPdfName}_${typeName}`, "pdf");
             
-            pdfDoc.setTitle(finalFileName); // 標題 = 檔名
-            pdfDoc.setAuthor('Delta_Zorua'); // 作者
-            pdfDoc.setSubject('台電用電變更'); // 主旨
-            pdfDoc.setKeywords(['台電', '路燈']); // 關鍵字
-            pdfDoc.setProducer('Taieasy'); // PDF 製作程式
-            pdfDoc.setCreator('Taieasy'); // 建立者 (應用程式)
-            pdfDoc.setCreationDate(new Date()); // 建立日期
-            pdfDoc.setModificationDate(new Date()); // 修改日期
+            pdfDoc.setTitle(finalFileName); 
+            pdfDoc.setAuthor('Delta_Zorua'); 
+            pdfDoc.setSubject('台電用電變更'); 
+            pdfDoc.setKeywords(['台電', '路燈']); 
+            pdfDoc.setProducer('Taieasy'); 
+            pdfDoc.setCreator('Taieasy'); 
+            pdfDoc.setCreationDate(new Date()); 
+            pdfDoc.setModificationDate(new Date()); 
 
             const page = pdfDoc.getPages()[0];
             
@@ -1692,16 +1700,21 @@
                 
                 const r = sl.data.radius || 7;
                 const vEdgePt = toVisualPoint(lat + r/111111, lng); 
+                // Need to calculate visualRadius even if circle is hidden, for text offset
                 const visualRadius = Math.abs(vEdgePt.y - vCirclePt.y); 
                 
                 const pCirclePt = transformPoint(vCirclePt.x, vCirclePt.y);
-                page.drawCircle({ 
-                    x: pCirclePt.x, 
-                    y: pCirclePt.y, 
-                    size: visualRadius, 
-                    borderColor: rgb(1,0,0), 
-                    borderWidth: 2 
-                });
+                
+                // CONDITIONAL DRAWING
+                if (showCircles) {
+                    page.drawCircle({ 
+                        x: pCirclePt.x, 
+                        y: pCirclePt.y, 
+                        size: visualRadius, 
+                        borderColor: rgb(1,0,0), 
+                        borderWidth: 2 
+                    });
+                }
 
                 let pdfCap = "";
                 if (sl.data.new_cap) {
@@ -1736,7 +1749,6 @@
             }
 
             // V39: Export Drawings (Filtered by drawnItemsLayer visibility)
-            // drawnItemsLayer only contains items that match the filter, so we can iterate it directly.
             drawnItemsLayer.eachLayer(layer => {
                 if (layer.drawType === 'circle') {
                     let circleLayer; layer.eachLayer(l => { if(l instanceof L.Circle) circleLayer = l; });
@@ -1747,6 +1759,10 @@
                         const vEdge = toVisualPoint(circleLayer.getLatLng().lat + circleLayer.getRadius()/111111, circleLayer.getLatLng().lng);
                         const vR = Math.abs(vEdge.y - vPt.y);
                         
+                        // Hand-drawn circles usually stay visible even if street light circles are hidden,
+                        // unless you want to hide ALL circles. Based on request "路燈紅圈", I only hid the street light ones above.
+                        // If you want to hide hand-drawn circles too, check showCircles here.
+                        // Assuming hand-drawn annotations should remain.
                         page.drawCircle({ x: pPt.x, y: pPt.y, size: vR, borderColor: hexToRgb(layer.color||'#ff0000'), borderWidth: 2 });
                     }
                 } else if (layer.drawType === 'line') {
